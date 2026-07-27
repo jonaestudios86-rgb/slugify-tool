@@ -11,3 +11,7 @@ def test_special_characters():
 
 def test_extra_whitespace():
     assert slugify("  lots   of   space  ") == "lots-of-space"
+
+
+def test_empty_string():
+    assert slugify("") == ""
