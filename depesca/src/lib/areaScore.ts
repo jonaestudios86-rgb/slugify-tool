@@ -6,6 +6,8 @@ export interface PlacePoint {
   id: string;
   lat: number;
   lon: number;
+  /** Direction the coast faces (deg), when known. */
+  orientation?: number;
 }
 
 /** Weather barely changes within ~20 km, so places share one forecast per cell. */
@@ -57,7 +59,7 @@ export async function scorePlaces(
   for (const p of places) {
     const cond = conds.get(keyOf(cellOf(p.lat, p.lon)));
     if (!cond) continue;
-    const spot: Spot = { id: p.id, name: '', lat: p.lat, lon: p.lon, seabed: 'arena', species: [], techniques: [], notes: '', favorite: false };
+    const spot: Spot = { id: p.id, name: '', lat: p.lat, lon: p.lon, seabed: 'arena', species: [], techniques: [], notes: '', favorite: false, orientation: p.orientation };
     const day = buildForecast(cond, spot, now).days[0];
     if (day) out[p.id] = day.headline.score;
   }

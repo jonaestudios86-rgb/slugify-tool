@@ -10,6 +10,8 @@ export interface MapHandle {
 export interface PlaceInfo {
   kind: 'beach' | 'pier' | 'breakwater';
   surface?: string;
+  /** Precomputed direction the coast faces (deg), when known. */
+  orientation?: number;
   /** Coastline segments [[lat,lon],[lat,lon]] near the place, to work out which way the coast faces. */
   coast: [number, number][][];
 }
@@ -22,7 +24,7 @@ export interface SpotMapProps {
   /** A beach / pier loaded from OpenStreetMap was tapped. */
   onPlace?: (lat: number, lon: number, name: string, info: PlaceInfo) => void;
   /** Imported places now on the map; the screen answers with `handleRef.setScores`. */
-  onPlaces?: (places: { id: string; lat: number; lon: number }[], center: { lat: number; lon: number }) => void;
+  onPlaces?: (places: { id: string; lat: number; lon: number; orientation?: number }[], center: { lat: number; lon: number }) => void;
   handleRef: React.MutableRefObject<MapHandle | null>;
 }
 
@@ -52,7 +54,7 @@ function dot(s,beach){var ring=beach?'#fff':'#d0b8ff';
  if(s==null)return L.divIcon({className:'',iconSize:[14,14],html:'<div style="width:14px;height:14px;border-radius:50%;background:'+(beach?'#4cc9f0':'#b388ff')+';border:2px solid '+ring+';box-sizing:border-box"></div>'});
  return L.divIcon({className:'',iconSize:[30,30],html:'<div style="width:30px;height:30px;border-radius:50%;background:'+lvl(s)+';border:2px solid '+ring+';box-sizing:border-box;color:#06121b;font:800 13px/26px sans-serif;text-align:center;box-shadow:0 1px 4px #0008">'+s+'</div>'})}
 window.setScores=function(sc){for(var k in sc){scores[k]=sc[k];var c=cmap[k];if(c){c.m.setIcon(dot(sc[k],c.beach));c.m.setTooltipContent(c.label+' · pesca '+sc[k]+'/100')}}};
-function announce(){var items=[];for(var k in cmap){if(scores[k]==null)items.push({id:k,lat:cmap[k].lat,lon:cmap[k].lon})}
+function announce(){var items=[],bb=map.getBounds();for(var k in cmap){if(scores[k]==null&&bb.contains([cmap[k].lat,cmap[k].lon]))items.push({id:k,lat:cmap[k].lat,lon:cmap[k].lon,orientation:cmap[k].o>=0?cmap[k].o:undefined})}
  if(items.length){var c=map.getCenter();post({type:'places',items:items.slice(0,300),center:{lat:c.lat,lon:c.lng}})}}
 map.on('moveend',function(){setTimeout(announce,900)});
 var cand=L.layerGroup(),candOn=true,seen={},lastBox=null,timer=null,busy=false,failed=false;
@@ -63,7 +65,22 @@ ctl.onAdd=function(){var d=L.DomUtil.create('div','leaflet-bar');d.style.cssText
 ctl.addTo(map);cand.addTo(map);
 function status(msg){var e=document.getElementById('cs');if(e)e.textContent=!candOn?'ocultas':(msg||'sí')}
 function kind(t){return t.natural==='beach'?'Playa':t.man_made==='pier'?'Espigón':'Escollera'}
-function pick(la,lo,nm,kd,surface){
+var DB=null,COV=null,dbState=0,KN=['beach','pier','breakwater'],KL=['Playa','Espigón','Escollera'];
+function loadDB(cb){
+ if(dbState===2)return cb(true);if(dbState===3)return cb(false);
+ if(dbState===1)return setTimeout(function(){loadDB(cb)},150);
+ dbState=1;
+ fetch('/beaches-es.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){DB=j.b;COV=j.cov;dbState=2;cb(true)}).catch(function(){dbState=3;cb(false)});
+}
+function addCand(k,la,lo,kd,name,surface,orient){
+ if(seen[k])return;seen[k]=1;var beach=kd==='beach',label=KL[KN.indexOf(kd)]+(name?': '+name:'');
+ var m=L.marker([la,lo],{icon:dot(scores[k]!=null?scores[k]:null,beach)}).addTo(cand);
+ m.bindTooltip(label+(scores[k]!=null?' · pesca '+scores[k]+'/100':''));
+ cmap[k]={m:m,beach:beach,label:label,lat:la,lon:lo,o:orient};
+ m.on('click',function(){pick(la,lo,name||KL[KN.indexOf(kd)],kd,surface,orient)});
+}
+function pick(la,lo,nm,kd,surface,orient){
+ if(orient!=null){post({type:'place',lat:la,lon:lo,name:nm,kind:kd,surface:surface,orientation:orient>=0?orient:undefined,coast:[]});return}
  status('analizando '+nm+'…');
  var q='[out:json][timeout:15];way(around:1200,'+la+','+lo+')["natural"="coastline"];out geom('+(la-0.015)+','+(lo-0.02)+','+(la+0.015)+','+(lo+0.02)+');';
  var done=false,go=function(coast){if(done)return;done=true;status();post({type:'place',lat:la,lon:lo,name:nm,kind:kd,surface:surface,coast:coast})};
@@ -75,26 +92,37 @@ function pick(la,lo,nm,kd,surface){
    if(dA<2000||dB<2000)segs.push([[a.lat,a.lon],[b.lat,b.lon]])}});
   go(segs)}).catch(function(){go([])});
 }
-function loadCand(){
- if(!candOn)return;
- if(map.getZoom()<10){status('acerca el zoom');return}
+function fromDB(){
+ var b=map.getBounds().pad(.1),c=map.getCenter(),s=b.getSouth(),n=b.getNorth(),w=b.getWest(),e=b.getEast(),list=[];
+ for(var i=0;i<DB.length;i++){var r=DB[i];if(r[0]>=s&&r[0]<=n&&r[1]>=w&&r[1]<=e)list.push(i)}
+ var d=function(i){return Math.hypot(DB[i][0]-c.lat,(DB[i][1]-c.lng)*.8)};
+ list.sort(function(x,y){return d(x)-d(y)});
+ if(Object.keys(cmap).length>900){cand.clearLayers();cmap={};seen={}}
+ list.slice(0,300).forEach(function(i){var r=DB[i];addCand('d'+i,r[0],r[1],KN[r[3]],r[2],r[5],r[4])});
+ failed=false;announce();status(list.length+' en la zona');
+}
+function loadLive(){
  var b=map.getBounds();
  if(lastBox&&lastBox.contains(b))return;
  var pb=b.pad(.15),q='[out:json][timeout:25];(nwr["natural"="beach"]('+pb.getSouth()+','+pb.getWest()+','+pb.getNorth()+','+pb.getEast()+');nwr["man_made"~"^(pier|breakwater)$"]["name"]('+pb.getSouth()+','+pb.getWest()+','+pb.getNorth()+','+pb.getEast()+'););out center 250;';
  if(busy)return;busy=true;failed=false;status('buscando…');
  ovp(q).then(function(j){
   lastBox=pb;var n=0;
-  j.elements.forEach(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon,k=e.type+e.id;
-   if(la==null||lo==null)return;n++;if(seen[k])return;seen[k]=1;
-   var t=e.tags||{},nm=t.name||kind(t),beach=t.natural==='beach';
-   var m=L.marker([la,lo],{icon:dot(null,beach)}).addTo(cand);
-   m.bindTooltip(kind(t)+(t.name?': '+t.name:''));
-   cmap[k]={m:m,beach:beach,label:kind(t)+(t.name?': '+t.name:''),lat:la,lon:lo};
-   m.on('click',function(){pick(la,lo,nm,t.natural==='beach'?'beach':t.man_made==='pier'?'pier':'breakwater',t.surface)})});
+  j.elements.forEach(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon;
+   if(la==null||lo==null)return;n++;var t=e.tags||{};
+   addCand(e.type+e.id,la,lo,t.natural==='beach'?'beach':t.man_made==='pier'?'pier':'breakwater',t.name,t.surface,null)});
   announce();
   failed=false;if(!n)lastBox=null;status(n+' en la zona')}).catch(function(){lastBox=null;failed=true;status('sin datos · toca para reintentar')}).then(function(){busy=false});
 }
-map.on('moveend',function(){clearTimeout(timer);timer=setTimeout(loadCand,600)});
+function loadCand(){
+ if(!candOn)return;
+ if(map.getZoom()<10){status('acerca el zoom');return}
+ loadDB(function(ok){
+  var c=map.getCenter();
+  if(ok&&COV&&c.lat>=COV[0]&&c.lat<=COV[2]&&c.lng>=COV[1]&&c.lng<=COV[3])fromDB();else loadLive();
+ });
+}
+map.on('moveend',function(){clearTimeout(timer);timer=setTimeout(loadCand,250)});
 function fit(){map.invalidateSize();clearTimeout(timer);timer=setTimeout(loadCand,400)}
 window.addEventListener('resize',fit);if(window.ResizeObserver)new ResizeObserver(fit).observe(document.getElementById('m'));
 setTimeout(fit,300);setTimeout(fit,1500);
