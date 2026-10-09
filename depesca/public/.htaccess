@@ -1,5 +1,4 @@
 # DePesca (Apache): single-page app served from the subdomain's document root.
-Options -MultiViews
 RewriteEngine On
 
 # Force HTTPS (geolocation and "Add to Home Screen" need it).

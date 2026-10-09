@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hm, keyToDate, localKey, nowHourKey, type Conditions } from '../conditions';
+import { fetchConditions, hm, keyToDate, localKey, nowHourKey, type Conditions } from '../conditions';
 import { buildForecast, bestWindows } from '../forecast';
 import { angleDiff, compass, onshoreComponent, waveExposure } from '../geo';
 import { buildPlan, castDistance, inSeason, SPECIES } from '../plan';
@@ -183,5 +183,35 @@ describe('places', () => {
     );
     expect(shops.map((s) => s.name)).toEqual(['Tienda de pesca', 'Lejos']);
     expect(shops[0].distanceKm).toBeLessThan(2);
+  });
+});
+
+describe('fetchConditions fallbacks', () => {
+  const T = ['2026-10-09T00:00', '2026-10-09T01:00'];
+  const weather = { utc_offset_seconds: 7200, timezone: 'Europe/Madrid', hourly: { time: T, wind_speed_10m: [10, 12], pressure_msl: [1015, 1016] } };
+  const marine = { hourly: { time: T, wave_height: [0.5, 0.6], sea_surface_temperature: [21, 21] } };
+  const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+  const bad = { ok: false, status: 400, json: async () => ({}) };
+
+  it('retries marine with fewer variables', async () => {
+    const urls: string[] = [];
+    const c = await fetchConditions(36.7, -4.4, 1, async (u) => {
+      urls.push(u);
+      if (u.includes('marine-api')) return u.includes('ocean_current') ? bad : ok(marine);
+      return ok(weather);
+    });
+    expect(urls.filter((u) => u.includes('marine-api'))).toHaveLength(2);
+    expect(c.points[0]).toMatchObject({ waveM: 0.5, windKmh: 10, currentMs: null });
+    expect(c.utcOffsetSec).toBe(7200);
+  });
+  it('keeps going on weather alone when marine has no data', async () => {
+    const c = await fetchConditions(40, -3.7, 1, async (u) => (u.includes('marine-api') ? bad : ok(weather)));
+    expect(c.points).toHaveLength(2);
+    expect(c.points[1]).toMatchObject({ waveM: null, seaTempC: null, windKmh: 12 });
+    const f = buildForecast(c, spot, NOW);
+    expect(Number.isFinite(f.days[0].dayScore)).toBe(true);
+  });
+  it('fails when weather is unavailable', async () => {
+    await expect(fetchConditions(36.7, -4.4, 1, async () => bad)).rejects.toThrow(/Open-Meteo 400/);
   });
 });

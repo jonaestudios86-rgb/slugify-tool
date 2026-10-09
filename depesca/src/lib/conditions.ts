@@ -74,30 +74,51 @@ export function mergeConditions(marine: MarineResponse, weather: WeatherResponse
   });
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+type Fetch = (url: string) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+
+async function getJson<T>(url: string, doFetch: Fetch): Promise<T> {
+  const res = await doFetch(url);
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
   return (await res.json()) as T;
 }
 
+/** Tries each URL in turn and returns the first response that works; the last error is thrown if none does. */
+async function firstOk<T>(urls: string[], doFetch: Fetch): Promise<T> {
+  let last: unknown = new Error('sin URL');
+  for (const u of urls) {
+    try {
+      return await getJson<T>(u, doFetch);
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last;
+}
+
+const MARINE_FULL = 'wave_height,wave_period,wave_direction,swell_wave_height,ocean_current_velocity,ocean_current_direction,sea_surface_temperature,sea_level_height_msl';
+const MARINE_BASIC = 'wave_height,wave_period,wave_direction,sea_surface_temperature';
+const WEATHER_FULL = 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,pressure_msl,cloud_cover,precipitation,precipitation_probability';
+const WEATHER_BASIC = 'wind_speed_10m,wind_direction_10m,temperature_2m,pressure_msl';
+
 /**
- * Free, keyless data from Open-Meteo. Marine variables come from a coarse global model, so
- * nearshore waves and tides are estimates. Times are local to the spot.
+ * Free, keyless data from Open-Meteo. Marine variables come from a coarse global model, so nearshore waves and
+ * tides are estimates. Times are local to the spot. If the API rejects some variables, fewer are requested; if
+ * the marine API has nothing for the point (e.g. inland), the forecast still works from weather alone.
  */
-export async function fetchConditions(lat: number, lon: number, days = 7): Promise<Conditions> {
+export async function fetchConditions(lat: number, lon: number, days = 7, doFetch: Fetch = fetch as unknown as Fetch): Promise<Conditions> {
   const q = `latitude=${lat}&longitude=${lon}&timezone=auto&forecast_days=${days}`;
+  const marineUrl = (vars: string) => `https://marine-api.open-meteo.com/v1/marine?${q}&cell_selection=sea&hourly=${vars}`;
+  const weatherUrl = (vars: string) => `https://api.open-meteo.com/v1/forecast?${q}&hourly=${vars}`;
+
   const [marine, weather] = await Promise.all([
-    getJson<MarineResponse>(
-      `https://marine-api.open-meteo.com/v1/marine?${q}&cell_selection=sea&hourly=wave_height,wave_period,wave_direction,swell_wave_height,ocean_current_velocity,ocean_current_direction,sea_surface_temperature,sea_level_height_msl`,
-    ),
-    getJson<WeatherResponse>(
-      `https://api.open-meteo.com/v1/forecast?${q}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,pressure_msl,cloud_cover,precipitation,precipitation_probability`,
-    ),
+    firstOk<MarineResponse>([marineUrl(MARINE_FULL), marineUrl(MARINE_BASIC)], doFetch).catch(() => null),
+    firstOk<WeatherResponse>([weatherUrl(WEATHER_FULL), weatherUrl(WEATHER_BASIC)], doFetch),
   ]);
+  const base: MarineResponse = marine ?? { hourly: { time: weather.hourly.time } };
   return {
-    points: mergeConditions(marine, weather),
-    utcOffsetSec: weather.utc_offset_seconds ?? marine.utc_offset_seconds ?? 0,
-    timezone: weather.timezone ?? marine.timezone ?? 'local',
+    points: mergeConditions(base, weather),
+    utcOffsetSec: weather.utc_offset_seconds ?? marine?.utc_offset_seconds ?? 0,
+    timezone: weather.timezone ?? marine?.timezone ?? 'local',
   };
 }
 
