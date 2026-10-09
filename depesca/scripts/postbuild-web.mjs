@@ -12,7 +12,10 @@ const head = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <style>body{background-color:#0b1d2a}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap" />
+    <style>body{background-color:#0b1d2a}body,body *{font-family:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif}</style>
   `;
 
 html = html

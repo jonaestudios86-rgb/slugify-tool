@@ -26,7 +26,7 @@ export function Header({ spot, tz, onNavigate, onAlert, onFavorite, onShare, onC
     <View style={[ui.row, { justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 }]}>
       <View style={{ flex: 1, paddingRight: 6 }}>
         <Text numberOfLines={1} style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{spot.name}</Text>
-        <Text style={ui.muted}>🕒 Hora local · {tz}</Text>
+        <Text style={ui.muted}>🕒 {tz === 'Europe/Madrid' ? 'Hora de España' : tz === 'Atlantic/Canary' ? 'Hora de Canarias' : `Hora local · ${tz}`}</Text>
       </View>
       <View style={ui.row}>
         <Icon glyph="➤" onPress={onNavigate} label="Cómo llegar" />
@@ -196,7 +196,7 @@ export function ShopsSection({ shops, loading, error, onOpen, onShop }: { shops:
 const Card = ({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) => (
   <View style={[ui.card, { padding: 16, marginHorizontal: 12 }]}>
     <View style={[ui.row, { justifyContent: 'space-between', marginBottom: 10 }]}>
-      <Text style={{ color: colors.muted, fontSize: 15 }}>{title}</Text>
+      <Text style={{ color: colors.muted, fontSize: 20 }}>{title}</Text>
       {right}
     </View>
     {children}
@@ -208,9 +208,9 @@ export function TideCard({ day }: { day: DayForecast }) {
   const pct = ((c.value - 20) / 100) * 100;
   return (
     <Card title="Coeficiente">
-      <Text style={{ color: colors.text, fontSize: 19, fontWeight: '700' }}>〰 {c.title}  {c.value}</Text>
-      <Text style={ui.muted}>{c.verdict}</Text>
-      {day.tideRangeM != null && <Text style={ui.muted}>Recorrido: {f1(day.tideRangeM)} m</Text>}
+      <Text style={{ color: colors.text, fontSize: 24, fontWeight: '600' }}>〰 {c.title}  {c.value}</Text>
+      <Text style={{ color: colors.muted, fontSize: 18, marginTop: 2 }}>{c.verdict}</Text>
+      {day.tideRangeM != null && <Text style={{ color: colors.muted, fontSize: 18 }}>Recorrido: {f1(day.tideRangeM)} m</Text>}
       <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.bg, marginTop: 10 }}>
         <View style={{ width: `${pct}%`, height: 6, borderRadius: 3, backgroundColor: colors.text }} />
       </View>
@@ -222,18 +222,20 @@ export function TideCard({ day }: { day: DayForecast }) {
       {day.tides.length ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {day.tides.map((e) => (
-            <View key={e.time} style={{ width: '48%', backgroundColor: colors.bg, borderRadius: 14, paddingVertical: 14, alignItems: 'center' }}>
-              <Text style={{ color: colors.text, fontSize: 20 }}>{e.type === 'high' ? '⬆' : '⬇'}</Text>
-              <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{e.time.slice(11, 16)}</Text>
-              <Text style={ui.muted}>{f1(e.levelM)} m</Text>
-              <Text style={ui.muted}>{e.type === 'high' ? 'Marea alta' : 'Marea baja'}</Text>
+            <View key={e.time} style={{ width: '48%', backgroundColor: '#0a1a28', borderRadius: 16, paddingVertical: 20, alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: e.type === 'high' ? '#e8f1f7' : '#8fa8ba', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#0b1d2a', fontSize: 26, fontWeight: '800', lineHeight: 30 }}>{e.type === 'high' ? '↑' : '↓'}</Text>
+              </View>
+              <Text style={{ color: colors.text, fontSize: 28, fontWeight: '600' }}>{e.time.slice(11, 16)}</Text>
+              <Text style={{ color: colors.muted, fontSize: 18 }}>{f1(e.levelM)}m</Text>
+              <Text style={{ color: colors.muted, fontSize: 18 }}>{e.type === 'high' ? 'Marea alta' : 'Marea baja'}</Text>
             </View>
           ))}
         </View>
       ) : (
         <Text style={ui.muted}>Sin datos de marea para este día.</Text>
       )}
-      <Text style={[ui.muted, { marginTop: 10 }]}>Alturas sobre el nivel medio del mar según el modelo; el coeficiente es una estimación. Contrasta con las tablas oficiales.</Text>
+      <Text style={[ui.muted, { marginTop: 10 }]}>Alturas sobre el nivel medio del mar según el modelo (no sobre el cero hidrográfico); el coeficiente es una estimación. Contrasta con las tablas oficiales.</Text>
     </Card>
   );
 }

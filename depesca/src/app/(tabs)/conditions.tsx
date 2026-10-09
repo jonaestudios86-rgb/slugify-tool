@@ -142,7 +142,7 @@ export default function Forecast() {
               />
             </View>
             <View style={{ paddingHorizontal: 12, marginTop: 10 }}>
-              <HourTable day={day} nowKey={forecast.nowKey} selectedHour={hour?.hour} onPickHour={setPickedHour} />
+              <HourTable day={day} nowKey={forecast.nowKey} selectedHour={pickedHour ?? undefined} onPickHour={setPickedHour} />
             </View>
             <TideCard day={day} />
             <SolunarCard day={day} utcOffsetSec={forecast.utcOffsetSec} nowKey={forecast.nowKey} />

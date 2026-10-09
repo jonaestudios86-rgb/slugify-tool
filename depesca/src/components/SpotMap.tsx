@@ -7,7 +7,7 @@ export type { MapHandle };
 
 
 /** Leaflet + OpenStreetMap/OpenSeaMap in a WebView: no API keys. Long-press the map to add a spot. */
-export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, handleRef }: SpotMapProps) {
+export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, onPlaces, handleRef }: SpotMapProps) {
   const web = useRef<WebView>(null);
   const ready = useRef(false);
   const run = (js: string) => web.current?.injectJavaScript(js + ';true;');
@@ -21,6 +21,7 @@ export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, handleRef
     handleRef.current = {
       setMe: (lat, lon, center) => run(`setMe(${lat},${lon},${!!center})`),
       flyTo: (lat, lon) => run(`flyTo(${lat},${lon})`),
+      setScores: (scores) => run(`setScores(${JSON.stringify(scores)})`),
     };
     return () => {
       handleRef.current = null;
@@ -34,6 +35,7 @@ export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, handleRef
       push();
     } else if (m.type === 'select') onSelect(m.id);
     else if (m.type === 'add') onAdd(m.lat, m.lon);
+    else if (m.type === 'places') onPlaces?.(m.items, m.center);
     else if (m.type === 'place') onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, coast: m.coast });
   };
 

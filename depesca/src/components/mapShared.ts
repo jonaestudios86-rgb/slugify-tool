@@ -3,6 +3,8 @@ import type { Spot } from '../lib/types';
 export interface MapHandle {
   setMe: (lat: number, lon: number, center?: boolean) => void;
   flyTo: (lat: number, lon: number) => void;
+  /** Fishing score (0-100) per imported place id, drawn inside its circle. */
+  setScores: (scores: Record<string, number>) => void;
 }
 
 export interface PlaceInfo {
@@ -19,6 +21,8 @@ export interface SpotMapProps {
   onAdd: (lat: number, lon: number) => void;
   /** A beach / pier loaded from OpenStreetMap was tapped. */
   onPlace?: (lat: number, lon: number, name: string, info: PlaceInfo) => void;
+  /** Imported places now on the map; the screen answers with `handleRef.setScores`. */
+  onPlaces?: (places: { id: string; lat: number; lon: number }[], center: { lat: number; lon: number }) => void;
   handleRef: React.MutableRefObject<MapHandle | null>;
 }
 
@@ -42,6 +46,15 @@ var OVP=['https://overpass-api.de/api/interpreter','https://overpass.kumi.system
 var SEQ=[0,0,1,0,2];
 function ovp(q,k){k=k||0;return fetch(OVP[SEQ[k]],{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q)})
  .then(function(r){if(!r.ok)throw 0;return r.json()}).catch(function(e){if(k+1>=SEQ.length)throw e;return new Promise(function(ok){setTimeout(ok,1500*(k+1))}).then(function(){return ovp(q,k+1)})})}
+var cmap={},scores={};
+function lvl(s){return s>=85?'#22c55e':s>=70?'#3b82f6':s>=50?'#f59e0b':s>=30?'#f97316':'#ef4444'}
+function dot(s,beach){var ring=beach?'#fff':'#d0b8ff';
+ if(s==null)return L.divIcon({className:'',iconSize:[14,14],html:'<div style="width:14px;height:14px;border-radius:50%;background:'+(beach?'#4cc9f0':'#b388ff')+';border:2px solid '+ring+';box-sizing:border-box"></div>'});
+ return L.divIcon({className:'',iconSize:[30,30],html:'<div style="width:30px;height:30px;border-radius:50%;background:'+lvl(s)+';border:2px solid '+ring+';box-sizing:border-box;color:#06121b;font:800 13px/26px sans-serif;text-align:center;box-shadow:0 1px 4px #0008">'+s+'</div>'})}
+window.setScores=function(sc){for(var k in sc){scores[k]=sc[k];var c=cmap[k];if(c){c.m.setIcon(dot(sc[k],c.beach));c.m.setTooltipContent(c.label+' · pesca '+sc[k]+'/100')}}};
+function announce(){var items=[];for(var k in cmap){if(scores[k]==null)items.push({id:k,lat:cmap[k].lat,lon:cmap[k].lon})}
+ if(items.length){var c=map.getCenter();post({type:'places',items:items.slice(0,300),center:{lat:c.lat,lon:c.lng}})}}
+map.on('moveend',function(){setTimeout(announce,900)});
 var cand=L.layerGroup(),candOn=true,seen={},lastBox=null,timer=null,busy=false;
 var ctl=L.control({position:'topleft'});
 ctl.onAdd=function(){var d=L.DomUtil.create('div','leaflet-bar');d.style.cssText='background:#0b1d2aee;color:#fff;font:600 13px sans-serif;padding:8px 10px;border-radius:8px;cursor:pointer;margin-top:10px';
@@ -74,9 +87,11 @@ function loadCand(){
   j.elements.forEach(function(e){var la=e.lat!=null?e.lat:e.center&&e.center.lat,lo=e.lon!=null?e.lon:e.center&&e.center.lon,k=e.type+e.id;
    if(la==null||lo==null)return;n++;if(seen[k])return;seen[k]=1;
    var t=e.tags||{},nm=t.name||kind(t),beach=t.natural==='beach';
-   var m=L.circleMarker([la,lo],{radius:beach?6:5,color:'#fff',weight:1,fillColor:beach?'#4cc9f0':'#b388ff',fillOpacity:.85}).addTo(cand);
+   var m=L.marker([la,lo],{icon:dot(null,beach)}).addTo(cand);
    m.bindTooltip(kind(t)+(t.name?': '+t.name:''));
+   cmap[k]={m:m,beach:beach,label:kind(t)+(t.name?': '+t.name:''),lat:la,lon:lo};
    m.on('click',function(){pick(la,lo,nm,t.natural==='beach'?'beach':t.man_made==='pier'?'pier':'breakwater',t.surface)})});
+  announce();
   status(n+' en la zona')}).catch(function(){lastBox=null;status('sin conexión')}).then(function(){busy=false});
 }
 map.on('moveend',function(){clearTimeout(timer);timer=setTimeout(loadCand,600)});

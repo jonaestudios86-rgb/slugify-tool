@@ -9,6 +9,7 @@ import { colors, ui } from '../../components/theme';
 import { selectionStore, spotsStore } from '../../lib/stores';
 import { confirmAction, notice } from '../../lib/dialog';
 import { ORIENTATIONS } from '../../lib/geo';
+import { scorePlaces } from '../../lib/areaScore';
 import { coastOrientation, placeDefaults } from '../../lib/places';
 import { uid } from '../../lib/storage';
 import type { Seabed, Spot } from '../../lib/types';
@@ -64,14 +65,14 @@ export default function MapScreen() {
   return (
     <View style={ui.screen}>
       <View style={{ flex: 1 }}>
-        <SpotMap spots={spots} selectedId={selectedId} onSelect={setSelected} onAdd={(lat, lon) => startNew(lat, lon)} onPlace={startPlace} handleRef={handle} />
+        <SpotMap spots={spots} selectedId={selectedId} onSelect={setSelected} onAdd={(lat, lon) => startNew(lat, lon)} onPlace={startPlace} onPlaces={(items, center) => { scorePlaces(items, center).then((s) => handle.current?.setScores(s)).catch(() => {}); }} handleRef={handle} />
         <View style={{ position: 'absolute', right: 10, top: 10, gap: 8 }}>
           <Btn label="📍 Yo" onPress={locate} />
           <Btn label="＋ Aquí" onPress={addHere} />
         </View>
         {!spots.length && (
           <View style={[ui.card, { position: 'absolute', left: 10, bottom: 10, right: 10 }]}>
-            <Text style={ui.text}>Toca una playa (punto azul), espigón o escollera (lila) para guardarla como spot. También puedes mantener pulsado el mapa, o usar “＋ Aquí”.</Text>
+            <Text style={ui.text}>Toca un círculo (playa, espigón o escollera): el número es su puntuación para pescar hoy. Al tocarlo se guarda como spot. También puedes mantener pulsado el mapa, o usar “＋ Aquí”.</Text>
           </View>
         )}
       </View>
