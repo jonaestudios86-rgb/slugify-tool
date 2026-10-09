@@ -13,7 +13,7 @@ import { mapsUrl, shareText } from '../../lib/dialog';
 import { buildForecast } from '../../lib/forecast';
 import { fetchShops, type Shop } from '../../lib/places';
 import { LEVEL_LABEL } from '../../lib/score';
-import { catchesStore, selectionStore, spotsStore } from '../../lib/stores';
+import { catchesStore, previewStore, selectionStore, spotsStore } from '../../lib/stores';
 
 interface Cached {
   cond: Conditions;
@@ -26,7 +26,17 @@ export default function Forecast() {
   const [spots, setSpots] = spotsStore.useValue();
   const [catches] = catchesStore.useValue();
   const [selectedId, setSelected] = selectionStore.useValue();
-  const spot = spots.find((s) => s.id === selectedId) ?? spots[0] ?? null;
+  const [preview, setPreview] = previewStore.useValue();
+  const isPreview = !!preview && preview.id === selectedId && !spots.some((s) => s.id === selectedId);
+  const spot = spots.find((s) => s.id === selectedId) ?? (isPreview ? preview : null) ?? spots[0] ?? null;
+  /** Saves a beach opened from the map into "mis spots". */
+  const saveSpot = (favorite: boolean) => {
+    if (!spot) return;
+    if (isPreview) {
+      setSpots((p) => [...p, { ...spot, favorite }]);
+      setPreview(null);
+    } else setSpots((p) => p.map((s) => (s.id === spot.id ? { ...s, favorite: favorite && !s.favorite } : s)));
+  };
 
   const [data, setData] = useState<Cached | null>(null);
   const [stale, setStale] = useState(false);
@@ -108,6 +118,7 @@ export default function Forecast() {
     <View style={ui.screen}>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.accent} />} contentContainerStyle={{ paddingBottom: 40 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 12, paddingBottom: 0 }}>
+          {isPreview && preview && <Chip key={preview.id} label={preview.name} on onPress={() => setSelected(preview.id)} />}
           {spots.map((s) => <Chip key={s.id} label={s.name} on={s.id === spot.id} onPress={() => setSelected(s.id)} />)}
         </ScrollView>
 
@@ -116,7 +127,7 @@ export default function Forecast() {
           tz={forecast?.timezone ?? '…'}
           onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)}
           onAlert={() => router.navigate('/alerts')}
-          onFavorite={() => setSpots((p) => p.map((s) => (s.id === spot.id ? { ...s, favorite: !s.favorite } : s)))}
+          onFavorite={() => saveSpot(true)}
           onShare={share}
           onClose={() => router.navigate('/')}
         />
@@ -126,7 +137,7 @@ export default function Forecast() {
 
         {forecast && day && data && (
           <>
-            <ScoreBlock onRefresh={load} day={day} fetchedAt={data.fetchedAt} stale={stale} onFish={() => router.navigate({ pathname: '/catches', params: { spot: spot.id } })} onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)} />
+            <ScoreBlock onRefresh={load} day={day} fetchedAt={data.fetchedAt} stale={stale} onFish={() => { if (isPreview) saveSpot(false); router.navigate({ pathname: '/catches', params: { spot: spot.id } }); }} onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)} />
             <DayPicker forecast={forecast} index={dayIdx} onPick={(i) => { setDayIdx(i); setPickedHour(null); }} />
             <Metrics day={day} spot={spot} hour={hour} />
             <View style={{ paddingHorizontal: 12 }}>

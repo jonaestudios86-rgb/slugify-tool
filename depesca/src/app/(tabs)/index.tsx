@@ -6,7 +6,7 @@ import { Btn, Chip } from '../../components/Btn';
 import { SpotMap, type MapHandle } from '../../components/SpotMap';
 import type { PlaceInfo } from '../../components/mapShared';
 import { colors, ui } from '../../components/theme';
-import { selectionStore, spotsStore } from '../../lib/stores';
+import { previewStore, selectionStore, spotsStore } from '../../lib/stores';
 import { confirmAction, notice } from '../../lib/dialog';
 import { ORIENTATIONS } from '../../lib/geo';
 import { scorePlaces } from '../../lib/areaScore';
@@ -28,9 +28,20 @@ export default function MapScreen() {
 
   const startNew = (lat: number, lon: number, name = '', notes = '') =>
     setDraft({ id: uid(), name, lat, lon, seabed: 'mixto', species: '', techniques: '', notes, favorite: false });
-  const startPlace = (lat: number, lon: number, name: string, info: PlaceInfo) => {
-    const d = placeDefaults(info.kind, info.surface);
-    setDraft({ id: uid(), name, lat, lon, seabed: d.seabed, species: d.species, techniques: d.techniques, notes: d.notes, favorite: false, orientation: coastOrientation(lat, lon, info.coast ?? []) });
+  /** Tapping an imported beach opens its forecast; it is only saved if the user hearts it or logs a catch. */
+  const openPlace = (lat: number, lon: number, name: string, info: PlaceInfo) => {
+    const near = spots.find((s) => Math.abs(s.lat - lat) < 0.0003 && Math.abs(s.lon - lon) < 0.0003);
+    if (near) setSelected(near.id);
+    else {
+      const d = placeDefaults(info.kind, info.surface);
+      const spot: Spot = {
+        id: `osm-${lat.toFixed(4)}_${lon.toFixed(4)}`, name, lat, lon, seabed: d.seabed, species: csv(d.species), techniques: csv(d.techniques),
+        notes: d.notes, favorite: false, orientation: coastOrientation(lat, lon, info.coast ?? []),
+      };
+      previewStore.set(spot);
+      setSelected(spot.id);
+    }
+    router.navigate('/conditions');
   };
   const edit = (s: Spot) => setDraft({ ...s, species: s.species.join(', '), techniques: s.techniques.join(', ') });
 
@@ -65,14 +76,14 @@ export default function MapScreen() {
   return (
     <View style={ui.screen}>
       <View style={{ flex: 1 }}>
-        <SpotMap spots={spots} selectedId={selectedId} onSelect={setSelected} onAdd={(lat, lon) => startNew(lat, lon)} onPlace={startPlace} onPlaces={(items, center) => { scorePlaces(items, center).then((s) => handle.current?.setScores(s)).catch(() => {}); }} handleRef={handle} />
+        <SpotMap spots={spots} selectedId={selectedId} onSelect={setSelected} onAdd={(lat, lon) => startNew(lat, lon)} onPlace={openPlace} onPlaces={(items, center) => { scorePlaces(items, center).then((s) => handle.current?.setScores(s)).catch(() => {}); }} handleRef={handle} />
         <View style={{ position: 'absolute', right: 10, top: 10, gap: 8 }}>
           <Btn label="📍 Yo" onPress={locate} />
           <Btn label="＋ Aquí" onPress={addHere} />
         </View>
         {!spots.length && (
           <View style={[ui.card, { position: 'absolute', left: 10, bottom: 10, right: 10 }]}>
-            <Text style={ui.text}>Toca un círculo (playa, espigón o escollera): el número es su puntuación para pescar hoy. Al tocarlo se guarda como spot. También puedes mantener pulsado el mapa, o usar “＋ Aquí”.</Text>
+            <Text style={ui.text}>Toca un círculo (playa, espigón o escollera): el número es su puntuación para pescar ahora y se abre su predicción. Para guardar un spot propio, mantén pulsado el mapa o usa “＋ Aquí”.</Text>
           </View>
         )}
       </View>
