@@ -11,11 +11,11 @@ type MapWindow = Window & {
 };
 
 /** Same Leaflet page as the native app, in an iframe. A srcDoc iframe shares our origin, so we call into it directly. */
-export function SpotMap({ spots, selectedId, onSelect, onAdd, handleRef }: SpotMapProps) {
+export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, handleRef }: SpotMapProps) {
   const frame = useRef<HTMLIFrameElement | null>(null);
   const ready = useRef(false);
-  const latest = useRef({ spots, selectedId, onSelect, onAdd });
-  latest.current = { spots, selectedId, onSelect, onAdd };
+  const latest = useRef({ spots, selectedId, onSelect, onAdd, onPlace });
+  latest.current = { spots, selectedId, onSelect, onAdd, onPlace };
 
   const win = () => frame.current?.contentWindow as MapWindow | null | undefined;
   const push = () => {
@@ -36,6 +36,7 @@ export function SpotMap({ spots, selectedId, onSelect, onAdd, handleRef }: SpotM
         push();
       } else if (m.type === 'select') latest.current.onSelect(m.id);
       else if (m.type === 'add') latest.current.onAdd(m.lat, m.lon);
+      else if (m.type === 'place') latest.current.onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, coast: m.coast });
     };
     window.addEventListener('message', onMessage);
     return () => {

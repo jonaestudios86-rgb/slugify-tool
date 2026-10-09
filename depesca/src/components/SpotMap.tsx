@@ -7,7 +7,7 @@ export type { MapHandle };
 
 
 /** Leaflet + OpenStreetMap/OpenSeaMap in a WebView: no API keys. Long-press the map to add a spot. */
-export function SpotMap({ spots, selectedId, onSelect, onAdd, handleRef }: SpotMapProps) {
+export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, handleRef }: SpotMapProps) {
   const web = useRef<WebView>(null);
   const ready = useRef(false);
   const run = (js: string) => web.current?.injectJavaScript(js + ';true;');
@@ -34,6 +34,7 @@ export function SpotMap({ spots, selectedId, onSelect, onAdd, handleRef }: SpotM
       push();
     } else if (m.type === 'select') onSelect(m.id);
     else if (m.type === 'add') onAdd(m.lat, m.lon);
+    else if (m.type === 'place') onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, coast: m.coast });
   };
 
   return <WebView ref={web} originWhitelist={['*']} source={{ html: MAP_HTML, baseUrl: 'https://localhost' }} onMessage={onMessage} javaScriptEnabled style={{ flex: 1 }} />;

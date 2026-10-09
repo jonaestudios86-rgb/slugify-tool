@@ -33,6 +33,7 @@ export default function Forecast() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dayIdx, setDayIdx] = useState(0);
+  const [pickedHour, setPickedHour] = useState<number | null>(null);
   const [shops, setShops] = useState<{ id: string; list: Shop[] | null; loading: boolean; error: boolean } | null>(null);
 
   const load = useCallback(async () => {
@@ -67,12 +68,14 @@ export default function Forecast() {
 
   useEffect(() => {
     setDayIdx(0);
+    setPickedHour(null);
     setData(null);
     void load();
   }, [load]);
 
   const forecast = useMemo(() => (data && spot ? buildForecast(data.cond, spot) : null), [data, spot]);
   const day = forecast?.days[Math.min(dayIdx, (forecast?.days.length ?? 1) - 1)];
+  const hour = day ? (day.hours.find((h) => h.hour === pickedHour) ?? day.headline.ref ?? day.hours[0] ?? null) : null;
 
   if (!spot) {
     return (
@@ -124,10 +127,10 @@ export default function Forecast() {
         {forecast && day && data && (
           <>
             <ScoreBlock onRefresh={load} day={day} fetchedAt={data.fetchedAt} stale={stale} onFish={() => router.navigate({ pathname: '/catches', params: { spot: spot.id } })} onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)} />
-            <DayPicker forecast={forecast} index={dayIdx} onPick={setDayIdx} />
-            <Metrics day={day} spot={spot} />
+            <DayPicker forecast={forecast} index={dayIdx} onPick={(i) => { setDayIdx(i); setPickedHour(null); }} />
+            <Metrics day={day} spot={spot} hour={hour} />
             <View style={{ paddingHorizontal: 12 }}>
-              <WhyScore day={day} />
+              {hour && <WhyScore day={day} hour={hour} utcOffsetSec={forecast.utcOffsetSec} />}
               <ZoneInfo spot={spot} />
               <PlanCard day={day} />
               <ShopsSection
@@ -139,7 +142,7 @@ export default function Forecast() {
               />
             </View>
             <View style={{ paddingHorizontal: 12, marginTop: 10 }}>
-              <HourTable day={day} nowKey={forecast.nowKey} />
+              <HourTable day={day} nowKey={forecast.nowKey} selectedHour={hour?.hour} onPickHour={setPickedHour} />
             </View>
             <TideCard day={day} />
             <SolunarCard day={day} utcOffsetSec={forecast.utcOffsetSec} nowKey={forecast.nowKey} />

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Svg, { Circle, Polygon, Polyline, Text as SvgText } from 'react-native-svg';
 import type { DayForecast } from '../../lib/forecast';
 import { compass } from '../../lib/geo';
@@ -10,6 +10,7 @@ import { f1 } from './format';
 const COL = 54;
 const LABEL_W = 84;
 const NOW_BG = 'rgba(46,196,182,0.28)';
+const SEL_BG = 'rgba(244,185,66,0.30)';
 const BEST_BG = 'rgba(34,197,94,0.14)';
 
 type Row = { k: string; label: string; unit?: string; h: number; section?: boolean };
@@ -46,7 +47,7 @@ function Arrow({ deg, travel = false }: { deg: number | null; travel?: boolean }
   );
 }
 
-export function HourTable({ day, nowKey }: { day: DayForecast; nowKey: string }) {
+export function HourTable({ day, nowKey, selectedHour, onPickHour }: { day: DayForecast; nowKey: string; selectedHour?: number; onPickHour?: (hour: number) => void }) {
   const scroller = useRef<ScrollView>(null);
   const nowIdx = day.hours.findIndex((h) => h.point.time === nowKey);
   const press = day.hours.map((h) => h.point.pressureHpa);
@@ -58,7 +59,7 @@ export function HourTable({ day, nowKey }: { day: DayForecast; nowKey: string })
   const valid = pts.filter((p): p is { x: number; y: number; v: number } => p !== null);
 
   const bg = (hour: number, time: string) =>
-    time === nowKey ? NOW_BG : day.bestStretch && hour >= day.bestStretch.start && hour < day.bestStretch.end ? BEST_BG : undefined;
+    hour === selectedHour ? SEL_BG : time === nowKey ? NOW_BG : day.bestStretch && hour >= day.bestStretch.start && hour < day.bestStretch.end ? BEST_BG : undefined;
 
   const cell = (r: Row, h: DayForecast['hours'][number]) => {
     const p = h.point;
@@ -108,17 +109,17 @@ export function HourTable({ day, nowKey }: { day: DayForecast; nowKey: string })
           <View style={{ width: day.hours.length * COL }}>
             <View style={{ flexDirection: 'row', height: 38, alignItems: 'center' }}>
               {day.hours.map((h) => (
-                <View key={h.point.time} style={{ width: COL, alignItems: 'center', height: 38, justifyContent: 'center', backgroundColor: bg(h.hour, h.point.time) }}>
+                <Pressable key={h.point.time} onPress={() => onPickHour?.(h.hour)} style={{ width: COL, alignItems: 'center', height: 38, justifyContent: 'center', backgroundColor: bg(h.hour, h.point.time) }}>
                   <Text style={{ color: h.point.time === nowKey ? colors.accent : colors.text, fontWeight: '700', fontSize: 13 }}>{String(h.hour).padStart(2, '0')}h</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
             {ROWS.map((r) => (
               <View key={r.k} style={{ flexDirection: 'row', height: r.h, borderTopWidth: 1, borderTopColor: colors.border }}>
                 {day.hours.map((h) => (
-                  <View key={h.point.time} style={{ width: COL, height: r.h, alignItems: 'center', justifyContent: 'center', backgroundColor: bg(h.hour, h.point.time) }}>
+                  <Pressable key={h.point.time} onPress={() => onPickHour?.(h.hour)} style={{ width: COL, height: r.h, alignItems: 'center', justifyContent: 'center', backgroundColor: bg(h.hour, h.point.time) }}>
                     {r.section ? null : cell(r, h)}
-                  </View>
+                  </Pressable>
                 ))}
                 {r.k === 'press' && valid.length > 1 && (
                   <Svg pointerEvents="none" width={day.hours.length * COL} height={r.h} style={{ position: 'absolute', left: 0, top: 0 }}>
@@ -138,6 +139,7 @@ export function HourTable({ day, nowKey }: { day: DayForecast; nowKey: string })
       <View style={[ui.row, { gap: 16, padding: 14, paddingBottom: 6 }]}>
         <View style={ui.row}><View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: NOW_BG, marginRight: 6 }} /><Text style={ui.muted}>Ahora</Text></View>
         <View style={ui.row}><View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: BEST_BG, marginRight: 6 }} /><Text style={ui.muted}>Mejor tramo del día</Text></View>
+        <View style={ui.row}><View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: SEL_BG, marginRight: 6 }} /><Text style={ui.muted}>Hora elegida</Text></View>
       </View>
       <Text style={[ui.muted, { paddingHorizontal: 14, paddingBottom: 14 }]}>Ola estimada para esta costa según su orientación, no la altura de mar abierto.</Text>
     </View>

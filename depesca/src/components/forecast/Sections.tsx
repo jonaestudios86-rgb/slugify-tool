@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { hm } from '../../lib/conditions';
-import type { DayForecast, Forecast } from '../../lib/forecast';
+import { factorDetails } from '../../lib/factorDetail';
+import type { DayForecast, Forecast, HourDetail } from '../../lib/forecast';
 import { compass, ORIENTATIONS } from '../../lib/geo';
 import { castDistance, candidateSpecies } from '../../lib/plan';
 import type { Shop } from '../../lib/places';
-import { factorColor, LEVEL_COLOR, LEVEL_LABEL, scoreLevel, type Factors } from '../../lib/score';
+import { explainScore, factorColor, LEVEL_COLOR, LEVEL_LABEL, scoreLevel, type Factors } from '../../lib/score';
 import { catchStats } from '../../lib/stats';
 import type { Catch, Spot } from '../../lib/types';
 import { Accordion } from '../Accordion';
@@ -94,9 +95,9 @@ function Metric({ icon, value, label, factor, sub }: { icon: string; value: stri
   );
 }
 
-export function Metrics({ day, spot }: { day: DayForecast; spot: Spot }) {
-  const ref = day.headline.ref?.point;
-  const f = day.headline.factors;
+export function Metrics({ day, spot, hour }: { day: DayForecast; spot: Spot; hour?: HourDetail | null }) {
+  const ref = (hour ?? day.headline.ref)?.point;
+  const f = (hour ?? day.headline.ref)?.factors ?? day.headline.factors;
   const sea = `${f1(day.seaMinM)}-${f1(day.seaMaxM)} m`;
   return (
     <View style={{ paddingHorizontal: 12, marginBottom: 6 }}>
@@ -120,17 +121,23 @@ export function Metrics({ day, spot }: { day: DayForecast; spot: Spot }) {
 
 const FACTOR_NAMES: Record<keyof Factors, string> = { sea: 'Mar', wind: 'Viento', tide: 'Marea', light: 'Luz', pressure: 'Presión', moon: 'Luna', rain: 'Lluvia' };
 
-export function WhyScore({ day }: { day: DayForecast }) {
-  const f = day.headline.factors;
+export function WhyScore({ day, hour, utcOffsetSec }: { day: DayForecast; hour: HourDetail; utcOffsetSec: number }) {
+  const f = hour.factors;
+  const d = factorDetails(day, hour, utcOffsetSec);
   return (
-    <Accordion title="¿Por qué esta puntuación?" defaultOpen>
-      <Text style={{ color: colors.text, fontSize: 20, marginBottom: 10 }}>{day.headline.explanation}</Text>
+    <Accordion title={`¿Por qué esta puntuación? · ${pad(hour.hour)}`} defaultOpen>
+      <Text style={{ color: colors.text, fontSize: 20, marginBottom: 4 }}>{explainScore(hour.score, f)}</Text>
+      <Text style={[ui.muted, { marginBottom: 10 }]}>Hora {pad(hour.hour)} · puntuación {hour.score}. Toca otra hora en la tabla de abajo para cambiarla.</Text>
       {(Object.keys(FACTOR_NAMES) as (keyof Factors)[]).map((k) => (
-        <View key={k} style={[ui.row, { marginBottom: 4 }]}>
-          <Text style={[ui.muted, { width: 64 }]}>{FACTOR_NAMES[k]}</Text>
-          <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.border }}>
-            <View style={{ width: `${Math.round(f[k])}%`, height: 6, borderRadius: 3, backgroundColor: factorColor(f[k]) }} />
+        <View key={k} style={{ marginBottom: 9 }}>
+          <View style={ui.row}>
+            <Text style={[ui.muted, { width: 64 }]}>{FACTOR_NAMES[k]}</Text>
+            <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.border }}>
+              <View style={{ width: `${Math.round(f[k])}%`, height: 6, borderRadius: 3, backgroundColor: factorColor(f[k]) }} />
+            </View>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14, width: 128, textAlign: 'right' }}>{d[k].value}</Text>
           </View>
+          {!!d[k].sub && <Text style={{ color: colors.muted, fontSize: 12, marginLeft: 64, marginTop: 2 }}>{d[k].sub}</Text>}
         </View>
       ))}
     </Accordion>

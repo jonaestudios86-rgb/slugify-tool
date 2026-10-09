@@ -81,3 +81,21 @@ describe('catchStats', () => {
     expect(catchStats([])).toMatchObject({ total: 0, biggest: null });
   });
 });
+
+describe('imported places', () => {
+  it('derives defaults from type and surface', async () => {
+    const { placeDefaults } = await import('../places');
+    expect(placeDefaults('beach', 'sand').seabed).toBe('arena');
+    expect(placeDefaults('beach', 'pebbles').seabed).toBe('mixto');
+    expect(placeDefaults('breakwater').seabed).toBe('roca');
+    expect(placeDefaults('pier').species).toContain('Dorada');
+  });
+  it('faces the sea from a coastline with land on its left', async () => {
+    const { coastOrientation } = await import('../places');
+    // coastline running north (land to the west) -> sea to the east
+    expect(coastOrientation(36.5, -4.5, [[[36.4, -4.5], [36.6, -4.5]]])).toBe(90);
+    // running east (land to the north) -> sea to the south
+    expect(coastOrientation(36.5, -4.5, [[[36.5, -4.6], [36.5, -4.4]]])).toBe(180);
+    expect(coastOrientation(36.5, -4.5, [])).toBeUndefined();
+  });
+});

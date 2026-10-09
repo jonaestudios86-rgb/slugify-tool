@@ -4,10 +4,12 @@ import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { SpotMap, type MapHandle } from '../../components/SpotMap';
+import type { PlaceInfo } from '../../components/mapShared';
 import { colors, ui } from '../../components/theme';
 import { selectionStore, spotsStore } from '../../lib/stores';
 import { confirmAction, notice } from '../../lib/dialog';
 import { ORIENTATIONS } from '../../lib/geo';
+import { coastOrientation, placeDefaults } from '../../lib/places';
 import { uid } from '../../lib/storage';
 import type { Seabed, Spot } from '../../lib/types';
 
@@ -23,8 +25,12 @@ export default function MapScreen() {
   const handle = useRef<MapHandle | null>(null);
   const selected = spots.find((s) => s.id === selectedId) ?? null;
 
-  const startNew = (lat: number, lon: number) =>
-    setDraft({ id: uid(), name: '', lat, lon, seabed: 'mixto', species: '', techniques: '', notes: '', favorite: false });
+  const startNew = (lat: number, lon: number, name = '', notes = '') =>
+    setDraft({ id: uid(), name, lat, lon, seabed: 'mixto', species: '', techniques: '', notes, favorite: false });
+  const startPlace = (lat: number, lon: number, name: string, info: PlaceInfo) => {
+    const d = placeDefaults(info.kind, info.surface);
+    setDraft({ id: uid(), name, lat, lon, seabed: d.seabed, species: d.species, techniques: d.techniques, notes: d.notes, favorite: false, orientation: coastOrientation(lat, lon, info.coast ?? []) });
+  };
   const edit = (s: Spot) => setDraft({ ...s, species: s.species.join(', '), techniques: s.techniques.join(', ') });
 
   const save = () => {
@@ -58,14 +64,14 @@ export default function MapScreen() {
   return (
     <View style={ui.screen}>
       <View style={{ flex: 1 }}>
-        <SpotMap spots={spots} selectedId={selectedId} onSelect={setSelected} onAdd={startNew} handleRef={handle} />
+        <SpotMap spots={spots} selectedId={selectedId} onSelect={setSelected} onAdd={(lat, lon) => startNew(lat, lon)} onPlace={startPlace} handleRef={handle} />
         <View style={{ position: 'absolute', right: 10, top: 10, gap: 8 }}>
           <Btn label="📍 Yo" onPress={locate} />
           <Btn label="＋ Aquí" onPress={addHere} />
         </View>
         {!spots.length && (
           <View style={[ui.card, { position: 'absolute', left: 10, bottom: 10, right: 10 }]}>
-            <Text style={ui.text}>Mantén pulsado el mapa para guardar un spot, o usa “＋ Aquí”.</Text>
+            <Text style={ui.text}>Toca una playa (punto azul), espigón o escollera (lila) para guardarla como spot. También puedes mantener pulsado el mapa, o usar “＋ Aquí”.</Text>
           </View>
         )}
       </View>
