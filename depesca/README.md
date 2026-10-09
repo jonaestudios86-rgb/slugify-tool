@@ -17,6 +17,7 @@ App móvil de pesca inspirada en la app RadarFish. Expo + React Native + TypeScr
   - Tiendas de pesca cercanas (OpenStreetMap).
   - Guarda la última previsión para consultarla sin conexión.
 - **Capturas**: foto, especie, peso, longitud, spot y notas, con estadísticas. “Pescar aquí” abre una captura nueva en ese spot.
+- **Datos**: copia de seguridad (exportar e importar un archivo .json con spots, capturas y alertas; combinar o reemplazar).
 - **Alertas**: reglas por spot (viento en km/h, oleaje, presión, marea, franja horaria) que programan notificaciones locales cuando el pronóstico las cumple.
 
 ## Uso
@@ -26,6 +27,32 @@ npx expo start      # abre con Expo Go en el móvil
 npm test            # lógica de mareas, alertas y estadísticas
 npm run typecheck
 ```
+
+## Versión web (tu propio subdominio)
+La web es estática: se genera una carpeta y se sube al hosting.
+
+```
+npm install
+npm run build:web      # genera dist/
+```
+
+1. En el panel de tu hosting crea el subdominio (por ejemplo `pesca.tudominio.com`) y anota su carpeta raíz.
+2. Activa HTTPS en ese subdominio (Let's Encrypt / AutoSSL). Sin HTTPS el navegador no da la ubicación ni deja instalarla en la pantalla de inicio.
+3. Sube **el contenido** de `dist/` (no la carpeta) a la raíz del subdominio. Incluye el archivo oculto `.htaccess`: activa "mostrar archivos ocultos" en tu cliente FTP o administrador de archivos.
+4. Abre la dirección. En el iPhone: Safari > Compartir > "Añadir a pantalla de inicio".
+
+Para actualizar, repite `npm run build:web` y vuelve a subir `dist/`.
+
+**Apache** (cPanel y la mayoría de hostings): `public/.htaccess` ya redirige a HTTPS, carga la app en cualquier ruta y ajusta la caché.
+
+**Nginx**, dentro del `server` del subdominio:
+```
+root /ruta/al/subdominio;
+location / { try_files $uri $uri/ /index.html; }
+location ~* -[0-9a-f]{32}\.(js|css|png|ttf)$ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+```
+
+**Limitaciones de la web:** los datos viven en el navegador de cada dispositivo (no se sincronizan entre ellos), no hay notificaciones y la cámara no está disponible: solo galería. Haz copias de seguridad desde la pestaña Datos.
 
 ## Limitaciones
 - Datos de Open-Meteo (modelo global). El oleaje en tu costa se estima a partir de la orientación que indiques en el spot; defínela para que sea útil.

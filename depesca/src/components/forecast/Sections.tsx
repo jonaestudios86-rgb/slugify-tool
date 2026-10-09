@@ -38,8 +38,8 @@ export function Header({ spot, tz, onNavigate, onAlert, onFavorite, onShare, onC
   );
 }
 
-export function ScoreBlock({ day, fetchedAt, stale, onFish, onNavigate }: {
-  day: DayForecast; fetchedAt: number; stale: boolean; onFish: () => void; onNavigate: () => void;
+export function ScoreBlock({ day, fetchedAt, stale, onFish, onNavigate, onRefresh }: {
+  day: DayForecast; fetchedAt: number; stale: boolean; onFish: () => void; onNavigate: () => void; onRefresh: () => void;
 }) {
   const h = day.headline;
   const color = LEVEL_COLOR[h.level];
@@ -52,7 +52,9 @@ export function ScoreBlock({ day, fetchedAt, stale, onFish, onNavigate }: {
           <View style={{ alignSelf: 'flex-start', backgroundColor: color, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 }}>
             <Text style={{ color: '#06121b', fontWeight: '800', fontSize: 16 }}>{LEVEL_LABEL[h.level]}</Text>
           </View>
-          <Text style={ui.muted}>🕒 {stale ? 'Datos guardados' : 'Actualizado'} {ago(fetchedAt)}</Text>
+          <Pressable onPress={onRefresh} accessibilityLabel="Actualizar" hitSlop={8}>
+            <Text style={ui.muted}>🕒 {stale ? 'Datos guardados' : 'Actualizado'} {ago(fetchedAt)}  <Text style={{ color: colors.accent }}>↻ Actualizar</Text></Text>
+          </Pressable>
           {day.bestHour != null && <Text style={ui.muted}>⏱ Mejor hora: <Text style={{ color: colors.text, fontWeight: '700' }}>{pad(day.bestHour)}</Text></Text>}
         </View>
       </View>

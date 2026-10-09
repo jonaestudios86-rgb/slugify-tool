@@ -1,9 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, Modal, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { colors, ui } from '../../components/theme';
+import { confirmAction, notice } from '../../lib/dialog';
+import { persistablePhoto } from '../../lib/image';
 import { uid } from '../../lib/storage';
 import { catchStats } from '../../lib/stats';
 import { catchesStore, spotsStore } from '../../lib/stores';
@@ -31,15 +33,15 @@ export default function Catches() {
   const pick = async (camera: boolean) => {
     const opts: ImagePicker.ImagePickerOptions = { mediaTypes: 'images', quality: 0.6 };
     const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return Alert.alert('Sin permiso');
+    if (!perm.granted) return notice('Sin permiso');
     const res = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
-    if (!res.canceled && draft) setDraft({ ...draft, photoUri: res.assets[0].uri });
+    if (!res.canceled && draft) setDraft({ ...draft, photoUri: await persistablePhoto(res.assets[0].uri) });
   };
 
   const save = () => {
     if (!draft) return;
     const weightKg = num(draft.weight);
-    if (!draft.species.trim() || !Number.isFinite(weightKg) || weightKg < 0) return Alert.alert('Indica especie y un peso válido (kg)');
+    if (!draft.species.trim() || !Number.isFinite(weightKg) || weightKg < 0) return notice('Indica especie y un peso válido (kg)');
     const lengthCm = draft.length ? num(draft.length) : undefined;
     const c: Catch = { id: uid(), date: new Date().toISOString(), species: draft.species.trim(), weightKg, lengthCm: Number.isFinite(lengthCm) ? lengthCm : undefined, spotId: draft.spotId, photoUri: draft.photoUri, notes: draft.notes };
     setCatches((p) => [c, ...p]);
@@ -47,10 +49,7 @@ export default function Catches() {
   };
 
   const remove = (c: Catch) =>
-    Alert.alert('Borrar captura', `¿Borrar ${c.species}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Borrar', style: 'destructive', onPress: () => setCatches((p) => p.filter((x) => x.id !== c.id)) },
-    ]);
+    confirmAction('Borrar captura', `¿Borrar ${c.species}?`, 'Borrar', () => setCatches((p) => p.filter((x) => x.id !== c.id)));
 
   return (
     <View style={ui.screen}>
@@ -92,7 +91,7 @@ export default function Catches() {
               <TextInput style={[ui.input, { height: 80 }]} multiline placeholder="Notas (cebo, hora, marea…)" placeholderTextColor={colors.muted} value={draft.notes} onChangeText={(notes) => setDraft({ ...draft, notes })} />
               {draft.photoUri && <Image source={{ uri: draft.photoUri }} style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 8 }} />}
               <View style={[ui.row, { gap: 8, marginBottom: 12 }]}>
-                <Btn ghost label="📷 Cámara" onPress={() => pick(true)} style={{ flex: 1 }} />
+                {Platform.OS !== 'web' && <Btn ghost label="📷 Cámara" onPress={() => pick(true)} style={{ flex: 1 }} />}
                 <Btn ghost label="🖼 Galería" onPress={() => pick(false)} style={{ flex: 1 }} />
               </View>
               <View style={[ui.row, { gap: 8 }]}>

@@ -21,7 +21,13 @@
       "package": "com.depesca.personal"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "DePesca",
+      "shortName": "DePesca",
+      "backgroundColor": "#0b1d2a",
+      "themeColor": "#13293a"
     },
     "scheme": "depesca",
     "plugins": [

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, Modal, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { colors, ui } from '../../components/theme';
 import { refreshAlerts, type AlertHit } from '../../lib/notify';
+import { notice } from '../../lib/dialog';
 import { uid } from '../../lib/storage';
 import { alertsStore, spotsStore } from '../../lib/stores';
 import type { AlertRule, TidePhase } from '../../lib/types';
@@ -24,7 +25,7 @@ export default function Alerts() {
     try {
       setHits(await refreshAlerts(list, spots));
     } catch {
-      Alert.alert('No se pudieron comprobar las alertas', 'Revisa la conexión.');
+      notice('No se pudieron comprobar las alertas', 'Revisa la conexión.');
     } finally {
       setBusy(false);
     }
@@ -32,7 +33,7 @@ export default function Alerts() {
 
   const save = () => {
     if (!draft) return;
-    if (!draft.spotId) return Alert.alert('Elige un spot');
+    if (!draft.spotId) return notice('Elige un spot');
     const rule: AlertRule = {
       id: uid(), enabled: true, name: draft.name.trim() || 'Condiciones ideales', spotId: draft.spotId, fishingType: draft.fishingType.trim(),
       maxWindKmh: num(draft.wind, 20), maxWaveM: num(draft.wave, 1), minPressureHpa: draft.pressure ? num(draft.pressure, 0) : undefined,
@@ -62,6 +63,7 @@ export default function Alerts() {
     <View style={ui.screen}>
       <ScrollView contentContainerStyle={{ padding: 12 }}>
         <Text style={ui.muted}>Avisos locales cuando el pronóstico cumple tus condiciones. Se recalculan al abrir la app o pulsar “Comprobar”.</Text>
+        {Platform.OS === 'web' && <Text style={{ color: colors.warn, marginTop: 6 }}>En la versión web no se envían notificaciones: aquí solo ves las ventanas calculadas. Para recibir avisos, usa la app en el móvil.</Text>}
         {rules.map((r) => (
           <View key={r.id} style={[ui.card, { marginTop: 10 }]}>
             <View style={ui.row}>

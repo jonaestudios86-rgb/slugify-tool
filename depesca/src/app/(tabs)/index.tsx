@@ -1,11 +1,12 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { SpotMap, type MapHandle } from '../../components/SpotMap';
 import { colors, ui } from '../../components/theme';
 import { selectionStore, spotsStore } from '../../lib/stores';
+import { confirmAction, notice } from '../../lib/dialog';
 import { ORIENTATIONS } from '../../lib/geo';
 import { uid } from '../../lib/storage';
 import type { Seabed, Spot } from '../../lib/types';
@@ -27,7 +28,7 @@ export default function MapScreen() {
   const edit = (s: Spot) => setDraft({ ...s, species: s.species.join(', '), techniques: s.techniques.join(', ') });
 
   const save = () => {
-    if (!draft || !draft.name.trim()) return Alert.alert('Falta el nombre del spot');
+    if (!draft || !draft.name.trim()) return notice('Falta el nombre del spot');
     const spot: Spot = { ...draft, name: draft.name.trim(), species: csv(draft.species), techniques: csv(draft.techniques) };
     setSpots((prev) => (prev.some((s) => s.id === spot.id) ? prev.map((s) => (s.id === spot.id ? spot : s)) : [...prev, spot]));
     setSelected(spot.id);
@@ -35,21 +36,21 @@ export default function MapScreen() {
   };
 
   const remove = (s: Spot) =>
-    Alert.alert('Borrar spot', `¿Borrar "${s.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Borrar', style: 'destructive', onPress: () => { setSpots((p) => p.filter((x) => x.id !== s.id)); setSelected(null); } },
-    ]);
+    confirmAction('Borrar spot', `¿Borrar "${s.name}"?`, 'Borrar', () => {
+      setSpots((p) => p.filter((x) => x.id !== s.id));
+      setSelected(null);
+    });
 
   const locate = async () => {
     const { granted } = await Location.requestForegroundPermissionsAsync();
-    if (!granted) return Alert.alert('Sin permiso de ubicación');
+    if (!granted) return notice('Sin permiso de ubicación');
     const pos = await Location.getCurrentPositionAsync({});
     handle.current?.setMe(pos.coords.latitude, pos.coords.longitude, true);
   };
 
   const addHere = async () => {
     const { granted } = await Location.requestForegroundPermissionsAsync();
-    if (!granted) return Alert.alert('Sin permiso de ubicación');
+    if (!granted) return notice('Sin permiso de ubicación');
     const pos = await Location.getCurrentPositionAsync({});
     startNew(pos.coords.latitude, pos.coords.longitude);
   };

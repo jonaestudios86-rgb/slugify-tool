@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
+import { notice } from './dialog';
 
 /** Tiny persisted store shared across screens. */
 export function createStore<T>(key: string, initial: T) {
@@ -24,7 +25,9 @@ export function createStore<T>(key: string, initial: T) {
   const set = (next: T | ((prev: T) => T)) => {
     value = typeof next === 'function' ? (next as (p: T) => T)(value) : next;
     listeners.forEach((l) => l());
-    AsyncStorage.setItem(key, JSON.stringify(value)).catch(() => {});
+    AsyncStorage.setItem(key, JSON.stringify(value)).catch(() =>
+      notice('No se pudo guardar', 'El almacenamiento del dispositivo está lleno o bloqueado. Exporta una copia de seguridad en la pestaña Datos y libera espacio.'),
+    );
   };
 
   const useValue = (): [T, typeof set] => {

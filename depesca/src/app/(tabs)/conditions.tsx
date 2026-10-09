@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Chip } from '../../components/Btn';
 import { HourTable } from '../../components/forecast/HourTable';
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../components/forecast/Sections';
 import { colors, ui } from '../../components/theme';
 import { fetchConditions, type Conditions } from '../../lib/conditions';
+import { mapsUrl, shareText } from '../../lib/dialog';
 import { buildForecast } from '../../lib/forecast';
 import { fetchShops, type Shop } from '../../lib/places';
 import { LEVEL_LABEL } from '../../lib/score';
@@ -82,9 +83,7 @@ export default function Forecast() {
   }
 
   const openMaps = (lat: number, lon: number, name: string) =>
-    Linking.openURL(
-      Platform.OS === 'ios' ? `http://maps.apple.com/?daddr=${lat},${lon}&q=${encodeURIComponent(name)}` : `geo:${lat},${lon}?q=${lat},${lon}(${encodeURIComponent(name)})`,
-    ).catch(() => {});
+    Linking.openURL(mapsUrl(lat, lon, name)).catch(() => {});
 
   const loadShops = () => {
     if (shops?.id === spot.id && (shops.list || shops.loading)) return;
@@ -96,9 +95,10 @@ export default function Forecast() {
 
   const share = () => {
     if (!day) return;
-    void Share.share({
-      message: `${spot.name}: puntuación ${day.headline.score} (${LEVEL_LABEL[day.headline.level]}). ${day.headline.explanation} Mejor hora: ${day.bestHour ?? '–'}h. https://maps.google.com/?q=${spot.lat},${spot.lon}`,
-    });
+    void shareText(
+       `${spot.name}: puntuación ${day.headline.score} (${LEVEL_LABEL[day.headline.level]}). ${day.headline.explanation} Mejor hora: ${day.bestHour ?? '–'}h. https://maps.google.com/?q=${spot.lat},${spot.lon}`,
+      spot.name,
+    );
   };
 
   return (
@@ -123,7 +123,7 @@ export default function Forecast() {
 
         {forecast && day && data && (
           <>
-            <ScoreBlock day={day} fetchedAt={data.fetchedAt} stale={stale} onFish={() => router.navigate({ pathname: '/catches', params: { spot: spot.id } })} onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)} />
+            <ScoreBlock onRefresh={load} day={day} fetchedAt={data.fetchedAt} stale={stale} onFish={() => router.navigate({ pathname: '/catches', params: { spot: spot.id } })} onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)} />
             <DayPicker forecast={forecast} index={dayIdx} onPick={setDayIdx} />
             <Metrics day={day} spot={spot} />
             <View style={{ paddingHorizontal: 12 }}>

@@ -1,11 +1,17 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { alertWindows } from './alerts';
 import { fetchConditions, keyToDate, nowHourKey } from './conditions';
 import type { AlertRule, Spot } from './types';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
-});
+// Browsers can't schedule notifications for later, so on web alerts only compute the upcoming windows.
+const canNotify = Platform.OS !== 'web';
+
+if (canNotify) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
+  });
+}
 
 export async function ensureNotificationPermission(): Promise<boolean> {
   const { granted } = await Notifications.requestPermissionsAsync();
@@ -36,6 +42,7 @@ export async function refreshAlerts(rules: AlertRule[], spots: Spot[]): Promise<
   }
   hits.sort((a, b) => a.start.localeCompare(b.start));
 
+  if (!canNotify) return hits;
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (await ensureNotificationPermission()) {
     for (const h of hits.slice(0, 20)) {
