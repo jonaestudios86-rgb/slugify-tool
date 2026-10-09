@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "DePesca",
+    "slug": "depesca",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.depesca.personal"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.depesca.personal"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "DePesca",
+      "shortName": "DePesca",
+      "backgroundColor": "#0b1d2a",
+      "themeColor": "#13293a"
+    },
+    "scheme": "depesca",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DePesca usa tu ubicación para mostrarte en el mapa y sus condiciones."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DePesca accede a tus fotos para adjuntarlas a las capturas.",
+          "cameraPermission": "DePesca usa la cámara para fotografiar capturas."
+        }
+      ],
+      "expo-notifications"
+    ]
+  }
+}

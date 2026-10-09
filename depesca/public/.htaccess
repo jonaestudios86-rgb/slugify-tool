@@ -1,0 +1,25 @@
+# DePesca (Apache): single-page app served from the subdomain's document root.
+RewriteEngine On
+
+# Force HTTPS (geolocation and "Add to Home Screen" need it).
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Real files and folders are served as they are; every other path loads the app.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ /index.html [L]
+
+AddType application/manifest+json .webmanifest
+
+<IfModule mod_headers.c>
+  # Hashed bundles never change: cache for a year. The page itself must always be re-checked.
+  <FilesMatch "-[0-9a-f]{32}\.(js|css|ttf|png|jpg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^(index\.html|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
