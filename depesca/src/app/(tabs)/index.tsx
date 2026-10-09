@@ -6,6 +6,7 @@ import { Btn, Chip } from '../../components/Btn';
 import { SpotMap, type MapHandle } from '../../components/SpotMap';
 import { colors, ui } from '../../components/theme';
 import { selectionStore, spotsStore } from '../../lib/stores';
+import { ORIENTATIONS } from '../../lib/geo';
 import { uid } from '../../lib/storage';
 import type { Seabed, Spot } from '../../lib/types';
 
@@ -74,12 +75,12 @@ export default function MapScreen() {
             <Text style={[ui.h2, { flex: 1 }]}>{selected.favorite ? '★ ' : ''}{selected.name}</Text>
             <Pressable onPress={() => handle.current?.flyTo(selected.lat, selected.lon)}><Text style={{ color: colors.accent }}>Centrar</Text></Pressable>
           </View>
-          <Text style={ui.muted}>Fondo: {selected.seabed} · {selected.lat.toFixed(4)}, {selected.lon.toFixed(4)}</Text>
+          <Text style={ui.muted}>Fondo: {selected.seabed}{selected.orientation != null ? ` · Costa al ${ORIENTATIONS.find((o) => o.deg === selected.orientation)?.label ?? ''}` : ''} · {selected.lat.toFixed(4)}, {selected.lon.toFixed(4)}</Text>
           {!!selected.species.length && <Text style={ui.text}>Especies: {selected.species.join(', ')}</Text>}
           {!!selected.techniques.length && <Text style={ui.text}>Técnicas: {selected.techniques.join(', ')}</Text>}
           {!!selected.notes && <Text style={ui.muted}>{selected.notes}</Text>}
           <View style={[ui.row, { gap: 8, marginTop: 8 }]}>
-            <Btn label="Condiciones" onPress={() => router.navigate('/conditions')} style={{ flex: 1 }} />
+            <Btn label="Predicción" onPress={() => router.navigate('/conditions')} style={{ flex: 1 }} />
             <Btn ghost label={selected.favorite ? '★' : '☆'} onPress={() => setSpots((p) => p.map((s) => (s.id === selected.id ? { ...s, favorite: !s.favorite } : s)))} />
             <Btn ghost label="Editar" onPress={() => edit(selected)} />
             <Btn ghost label="🗑" onPress={() => remove(selected)} />
@@ -103,6 +104,10 @@ export default function MapScreen() {
               <Text style={ui.muted}>Tipo de fondo</Text>
               <ScrollView horizontal style={{ marginVertical: 8 }}>
                 {SEABEDS.map((s) => <Chip key={s} label={s} on={draft.seabed === s} onPress={() => setDraft({ ...draft, seabed: s })} />)}
+              </ScrollView>
+              <Text style={ui.muted}>Orientación de la costa (hacia dónde mira el mar)</Text>
+              <ScrollView horizontal style={{ marginVertical: 8 }}>
+                {ORIENTATIONS.map((o) => <Chip key={o.label} label={o.label} on={draft.orientation === o.deg} onPress={() => setDraft({ ...draft, orientation: draft.orientation === o.deg ? undefined : o.deg })} />)}
               </ScrollView>
               <TextInput style={ui.input} placeholder="Especies (separadas por comas)" placeholderTextColor={colors.muted} value={draft.species} onChangeText={(species) => setDraft({ ...draft, species })} />
               <TextInput style={ui.input} placeholder="Técnicas (spinning, fondo, curricán…)" placeholderTextColor={colors.muted} value={draft.techniques} onChangeText={(techniques) => setDraft({ ...draft, techniques })} />

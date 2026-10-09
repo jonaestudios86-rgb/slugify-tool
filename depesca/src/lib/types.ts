@@ -10,6 +10,8 @@ export interface Spot {
   techniques: string[];
   notes: string;
   favorite: boolean;
+  /** Compass bearing (deg) the coast faces, towards the open sea. Used to estimate nearshore waves. */
+  orientation?: number;
 }
 
 export interface Catch {
@@ -32,7 +34,7 @@ export interface AlertRule {
   spotId: string;
   /** Free label, e.g. "spinning", "fondo", "surfcasting". */
   fishingType: string;
-  maxWindKn: number;
+  maxWindKmh: number;
   maxWaveM: number;
   minPressureHpa?: number;
   tide: TidePhase;
@@ -45,11 +47,24 @@ export interface AlertRule {
 export interface HourPoint {
   time: string;
   waveM: number | null;
+  wavePeriodS: number | null;
+  /** Direction the waves come FROM, degrees. */
+  waveDirDeg: number | null;
+  swellM: number | null;
+  currentMs: number | null;
+  /** Direction the current flows TOWARDS, degrees. */
+  currentDirDeg: number | null;
   seaTempC: number | null;
   seaLevelM: number | null;
-  windKn: number | null;
+  windKmh: number | null;
+  /** Direction the wind comes FROM, degrees. */
   windDirDeg: number | null;
+  gustKmh: number | null;
+  airTempC: number | null;
   pressureHpa: number | null;
+  cloudPct: number | null;
+  rainMm: number | null;
+  rainProbPct: number | null;
 }
 
 export interface TideEvent {

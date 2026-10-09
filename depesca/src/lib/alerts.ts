@@ -11,7 +11,7 @@ export function hourMatches(points: HourPoint[], i: number, rule: AlertRule): bo
   const inRange =
     rule.fromHour <= rule.toHour ? h >= rule.fromHour && h < rule.toHour : h >= rule.fromHour || h < rule.toHour;
   if (!inRange) return false;
-  if (p.windKn == null || p.windKn > rule.maxWindKn) return false;
+  if (p.windKmh == null || p.windKmh > rule.maxWindKmh) return false;
   if (p.waveM == null || p.waveM > rule.maxWaveM) return false;
   if (rule.minPressureHpa != null && (p.pressureHpa == null || p.pressureHpa < rule.minPressureHpa)) return false;
   if (rule.tide !== 'any' && tidePhaseAt(points, i) !== rule.tide) return false;

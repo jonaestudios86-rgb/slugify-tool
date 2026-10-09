@@ -1,88 +1,153 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Linking, Platform, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 import { Chip } from '../../components/Btn';
+import { HourTable } from '../../components/forecast/HourTable';
+import {
+  DayPicker, Header, HistoryCard, Metrics, PlanCard, ScoreBlock, ShopsSection, SolunarCard, SpeciesCard, TideCard, WhyScore, ZoneInfo,
+} from '../../components/forecast/Sections';
 import { colors, ui } from '../../components/theme';
-import { compass, fetchConditions, nowHourKey } from '../../lib/conditions';
-import { selectionStore, spotsStore } from '../../lib/stores';
-import { tideEvents } from '../../lib/tides';
-import type { HourPoint } from '../../lib/types';
+import { fetchConditions, type Conditions } from '../../lib/conditions';
+import { buildForecast } from '../../lib/forecast';
+import { fetchShops, type Shop } from '../../lib/places';
+import { LEVEL_LABEL } from '../../lib/score';
+import { catchesStore, selectionStore, spotsStore } from '../../lib/stores';
 
-const f = (n: number | null, d = 1) => (n == null ? '–' : n.toFixed(d));
-const day = (t: string) => new Date(t).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+interface Cached {
+  cond: Conditions;
+  fetchedAt: number;
+}
 
-export default function Conditions() {
-  const [spots] = spotsStore.useValue();
+const cacheKey = (id: string) => `dp.forecast.${id}`;
+
+export default function Forecast() {
+  const [spots, setSpots] = spotsStore.useValue();
+  const [catches] = catchesStore.useValue();
   const [selectedId, setSelected] = selectionStore.useValue();
   const spot = spots.find((s) => s.id === selectedId) ?? spots[0] ?? null;
-  const [points, setPoints] = useState<HourPoint[] | null>(null);
+
+  const [data, setData] = useState<Cached | null>(null);
+  const [stale, setStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dayIdx, setDayIdx] = useState(0);
+  const [shops, setShops] = useState<{ id: string; list: Shop[] | null; loading: boolean; error: boolean } | null>(null);
 
   const load = useCallback(async () => {
     if (!spot) return;
+    const id = spot.id;
     setLoading(true);
     setError(null);
     try {
-      setPoints(await fetchConditions(spot.lat, spot.lon, 5));
-    } catch (e) {
-      setError('No se pudieron cargar las condiciones. Revisa la conexión.');
+      const cond = await fetchConditions(spot.lat, spot.lon, 7);
+      const fresh = { cond, fetchedAt: Date.now() };
+      setData(fresh);
+      setStale(false);
+      AsyncStorage.setItem(cacheKey(id), JSON.stringify(fresh)).catch(() => {});
+    } catch {
+      try {
+        const raw = await AsyncStorage.getItem(cacheKey(id));
+        if (raw) {
+          setData(JSON.parse(raw) as Cached);
+          setStale(true);
+          setError('Sin conexión: se muestran los últimos datos guardados.');
+        } else {
+          setData(null);
+          setError('No se pudo cargar la predicción y no hay datos guardados. Revisa la conexión.');
+        }
+      } catch {
+        setError('No se pudo cargar la predicción. Revisa la conexión.');
+      }
     } finally {
       setLoading(false);
     }
   }, [spot?.id, spot?.lat, spot?.lon]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    setDayIdx(0);
+    setData(null);
+    void load();
+  }, [load]);
 
-  if (!spot) return <View style={[ui.screen, { padding: 16 }]}><Text style={ui.text}>Guarda un spot en el mapa para ver sus condiciones.</Text></View>;
+  const forecast = useMemo(() => (data && spot ? buildForecast(data.cond, spot) : null), [data, spot]);
+  const day = forecast?.days[Math.min(dayIdx, (forecast?.days.length ?? 1) - 1)];
 
-  const now = nowHourKey();
-  const upcoming = points?.filter((p) => p.time >= now) ?? [];
-  const current = upcoming[0];
-  const tides = tideEvents(points ?? []).filter((e) => e.time >= now).slice(0, 6);
+  if (!spot) {
+    return (
+      <View style={[ui.screen, { padding: 16 }]}>
+        <Text style={ui.text}>Guarda un spot en el mapa para ver su predicción.</Text>
+      </View>
+    );
+  }
+
+  const openMaps = (lat: number, lon: number, name: string) =>
+    Linking.openURL(
+      Platform.OS === 'ios' ? `http://maps.apple.com/?daddr=${lat},${lon}&q=${encodeURIComponent(name)}` : `geo:${lat},${lon}?q=${lat},${lon}(${encodeURIComponent(name)})`,
+    ).catch(() => {});
+
+  const loadShops = () => {
+    if (shops?.id === spot.id && (shops.list || shops.loading)) return;
+    setShops({ id: spot.id, list: null, loading: true, error: false });
+    fetchShops(spot.lat, spot.lon)
+      .then((list) => setShops({ id: spot.id, list, loading: false, error: false }))
+      .catch(() => setShops({ id: spot.id, list: null, loading: false, error: true }));
+  };
+
+  const share = () => {
+    if (!day) return;
+    void Share.share({
+      message: `${spot.name}: puntuación ${day.headline.score} (${LEVEL_LABEL[day.headline.level]}). ${day.headline.explanation} Mejor hora: ${day.bestHour ?? '–'}h. https://maps.google.com/?q=${spot.lat},${spot.lon}`,
+    });
+  };
 
   return (
-    <ScrollView style={ui.screen} contentContainerStyle={{ padding: 12 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.accent} />}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-        {spots.map((s) => <Chip key={s.id} label={s.name} on={s.id === spot.id} onPress={() => setSelected(s.id)} />)}
-      </ScrollView>
-      {loading && !points && <ActivityIndicator color={colors.accent} />}
-      {error && <Text style={{ color: colors.danger }}>{error}</Text>}
+    <View style={ui.screen}>
+      <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.accent} />} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 12, paddingBottom: 0 }}>
+          {spots.map((s) => <Chip key={s.id} label={s.name} on={s.id === spot.id} onPress={() => setSelected(s.id)} />)}
+        </ScrollView>
 
-      {current && (
-        <View style={ui.card}>
-          <Text style={ui.h2}>Ahora en {spot.name}</Text>
-          <Text style={ui.text}>🌊 Oleaje {f(current.waveM)} m   🌡 Agua {f(current.seaTempC, 0)} °C</Text>
-          <Text style={ui.text}>💨 Viento {f(current.windKn, 0)} kn {compass(current.windDirDeg)}   ⏲ {f(current.pressureHpa, 0)} hPa</Text>
-        </View>
-      )}
+        <Header
+          spot={spot}
+          tz={forecast?.timezone ?? '…'}
+          onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)}
+          onAlert={() => router.navigate('/alerts')}
+          onFavorite={() => setSpots((p) => p.map((s) => (s.id === spot.id ? { ...s, favorite: !s.favorite } : s)))}
+          onShare={share}
+          onClose={() => router.navigate('/')}
+        />
 
-      {!!tides.length && (
-        <View style={ui.card}>
-          <Text style={ui.h2}>Próximas mareas</Text>
-          {tides.map((e) => (
-            <Text key={e.time} style={ui.text}>{e.type === 'high' ? '▲ Pleamar' : '▼ Bajamar'} · {day(e.time)} {e.time.slice(11, 16)} · {f(e.levelM, 2)} m</Text>
-          ))}
-          <Text style={[ui.muted, { marginTop: 6 }]}>Aproximadas: derivadas del nivel del mar modelado (Open-Meteo). Contrasta con tablas oficiales.</Text>
-        </View>
-      )}
+        {loading && !forecast && <ActivityIndicator color={colors.accent} style={{ marginTop: 30 }} />}
+        {error && <Text style={{ color: stale ? colors.warn : colors.danger, paddingHorizontal: 12, marginBottom: 8 }}>{error}</Text>}
 
-      {!!upcoming.length && (
-        <View style={ui.card}>
-          <Text style={ui.h2}>Próximas horas</Text>
-          <View style={[ui.row, { marginTop: 6 }]}>
-            {['Hora', 'Olas', 'Viento', 'hPa', 'Nivel'].map((h) => <Text key={h} style={[ui.muted, { flex: 1 }]}>{h}</Text>)}
-          </View>
-          {upcoming.filter((_, i) => i % 3 === 0).slice(0, 24).map((p) => (
-            <View key={p.time} style={ui.row}>
-              <Text style={[ui.text, { flex: 1 }]}>{p.time.slice(8, 10)}·{p.time.slice(11, 13)}h</Text>
-              <Text style={[ui.text, { flex: 1 }]}>{f(p.waveM)}</Text>
-              <Text style={[ui.text, { flex: 1 }]}>{f(p.windKn, 0)} {compass(p.windDirDeg)}</Text>
-              <Text style={[ui.text, { flex: 1 }]}>{f(p.pressureHpa, 0)}</Text>
-              <Text style={[ui.text, { flex: 1 }]}>{f(p.seaLevelM, 2)}</Text>
+        {forecast && day && data && (
+          <>
+            <ScoreBlock day={day} fetchedAt={data.fetchedAt} stale={stale} onFish={() => router.navigate({ pathname: '/catches', params: { spot: spot.id } })} onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)} />
+            <DayPicker forecast={forecast} index={dayIdx} onPick={setDayIdx} />
+            <Metrics day={day} spot={spot} />
+            <View style={{ paddingHorizontal: 12 }}>
+              <WhyScore day={day} />
+              <ZoneInfo spot={spot} />
+              <PlanCard day={day} />
+              <ShopsSection
+                shops={shops?.id === spot.id ? shops.list : null}
+                loading={shops?.id === spot.id && shops.loading}
+                error={shops?.id === spot.id && shops.error}
+                onOpen={loadShops}
+                onShop={(s) => openMaps(s.lat, s.lon, s.name)}
+              />
             </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+            <View style={{ paddingHorizontal: 12, marginTop: 10 }}>
+              <HourTable day={day} nowKey={forecast.nowKey} />
+            </View>
+            <TideCard day={day} />
+            <SolunarCard day={day} utcOffsetSec={forecast.utcOffsetSec} nowKey={forecast.nowKey} />
+            <SpeciesCard key={spot.id} spot={spot} day={day} />
+            <HistoryCard spot={spot} catches={catches} />
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }

@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Modal, ScrollView, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { colors, ui } from '../../components/theme';
@@ -16,6 +17,14 @@ export default function Catches() {
   const [catches, setCatches] = catchesStore.useValue();
   const [spots] = spotsStore.useValue();
   const [draft, setDraft] = useState<Draft | null>(null);
+  const params = useLocalSearchParams<{ spot?: string }>();
+  // "Pescar aquí" on the forecast opens a new catch for that spot.
+  useEffect(() => {
+    if (params.spot) {
+      setDraft({ ...EMPTY, spotId: params.spot });
+      router.setParams({ spot: '' });
+    }
+  }, [params.spot]);
   const stats = useMemo(() => catchStats(catches), [catches]);
   const spotName = (id?: string) => spots.find((s) => s.id === id)?.name;
 

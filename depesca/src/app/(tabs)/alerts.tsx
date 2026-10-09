@@ -35,7 +35,7 @@ export default function Alerts() {
     if (!draft.spotId) return Alert.alert('Elige un spot');
     const rule: AlertRule = {
       id: uid(), enabled: true, name: draft.name.trim() || 'Condiciones ideales', spotId: draft.spotId, fishingType: draft.fishingType.trim(),
-      maxWindKn: num(draft.wind, 12), maxWaveM: num(draft.wave, 1), minPressureHpa: draft.pressure ? num(draft.pressure, 0) : undefined,
+      maxWindKmh: num(draft.wind, 20), maxWaveM: num(draft.wave, 1), minPressureHpa: draft.pressure ? num(draft.pressure, 0) : undefined,
       tide: draft.tide, fromHour: Math.min(24, Math.max(0, num(draft.from, 0))), toHour: Math.min(24, Math.max(0, num(draft.to, 24))),
     };
     const next = [...rules, rule];
@@ -69,7 +69,7 @@ export default function Alerts() {
               <Switch value={r.enabled} onValueChange={(v) => toggle(r.id, v)} trackColor={{ true: colors.accent }} />
             </View>
             <Text style={ui.text}>{spotName(r.spotId)}{r.fishingType ? ` · ${r.fishingType}` : ''}</Text>
-            <Text style={ui.muted}>Viento ≤ {r.maxWindKn} kn · Olas ≤ {r.maxWaveM} m{r.minPressureHpa ? ` · ≥ ${r.minPressureHpa} hPa` : ''} · Marea: {TIDES.find((t) => t[0] === r.tide)?.[1]} · {r.fromHour}–{r.toHour} h</Text>
+            <Text style={ui.muted}>Viento ≤ {r.maxWindKmh} km/h · Olas ≤ {r.maxWaveM} m{r.minPressureHpa ? ` · ≥ ${r.minPressureHpa} hPa` : ''} · Marea: {TIDES.find((t) => t[0] === r.tide)?.[1]} · {r.fromHour}–{r.toHour} h</Text>
             <Text onPress={() => remove(r.id)} style={{ color: colors.danger, marginTop: 6 }}>Borrar</Text>
           </View>
         ))}
@@ -87,7 +87,7 @@ export default function Alerts() {
       </ScrollView>
       <View style={[ui.row, { padding: 12, gap: 8 }]}>
         <Btn ghost label={busy ? 'Comprobando…' : 'Comprobar'} onPress={() => check()} style={{ flex: 1 }} />
-        <Btn label="＋ Nueva alerta" onPress={() => setDraft({ name: '', spotId: spots[0]?.id ?? '', fishingType: '', wind: '12', wave: '1', pressure: '', tide: 'any', from: '0', to: '24' })} style={{ flex: 1 }} />
+        <Btn label="＋ Nueva alerta" onPress={() => setDraft({ name: '', spotId: spots[0]?.id ?? '', fishingType: '', wind: '20', wave: '1', pressure: '', tide: 'any', from: '0', to: '24' })} style={{ flex: 1 }} />
       </View>
 
       <Modal visible={!!draft} animationType="slide" onRequestClose={() => setDraft(null)}>
@@ -102,7 +102,7 @@ export default function Alerts() {
               </ScrollView>
               {!spots.length && <Text style={{ color: colors.warn }}>Primero guarda un spot en el mapa.</Text>}
               <TextInput style={ui.input} placeholder="Tipo de pesca (spinning, fondo…)" placeholderTextColor={colors.muted} value={draft.fishingType} onChangeText={(fishingType) => setDraft({ ...draft, fishingType })} />
-              <TextInput style={ui.input} placeholder="Viento máx. (kn)" keyboardType="decimal-pad" placeholderTextColor={colors.muted} value={draft.wind} onChangeText={(wind) => setDraft({ ...draft, wind })} />
+              <TextInput style={ui.input} placeholder="Viento máx. (km/h)" keyboardType="decimal-pad" placeholderTextColor={colors.muted} value={draft.wind} onChangeText={(wind) => setDraft({ ...draft, wind })} />
               <TextInput style={ui.input} placeholder="Oleaje máx. (m)" keyboardType="decimal-pad" placeholderTextColor={colors.muted} value={draft.wave} onChangeText={(wave) => setDraft({ ...draft, wave })} />
               <TextInput style={ui.input} placeholder="Presión mín. hPa (opcional)" keyboardType="decimal-pad" placeholderTextColor={colors.muted} value={draft.pressure} onChangeText={(pressure) => setDraft({ ...draft, pressure })} />
               <Text style={ui.muted}>Marea</Text>

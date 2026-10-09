@@ -7,18 +7,15 @@ import type { AlertRule, Catch, HourPoint } from '../types';
 
 const pt = (h: number, o: Partial<HourPoint> = {}): HourPoint => ({
   time: `2026-10-09T${String(h).padStart(2, '0')}:00`,
-  waveM: 0.5,
-  seaTempC: 20,
-  seaLevelM: 0,
-  windKn: 5,
-  windDirDeg: 90,
-  pressureHpa: 1015,
+  waveM: 0.5, wavePeriodS: 5, waveDirDeg: 180, swellM: 0.3, currentMs: 0.1, currentDirDeg: 90,
+  seaTempC: 20, seaLevelM: 0, windKmh: 9, windDirDeg: 90, gustKmh: 14, airTempC: 20,
+  pressureHpa: 1015, cloudPct: 10, rainMm: 0, rainProbPct: 0,
   ...o,
 });
 
 const rule: AlertRule = {
   id: 'r', name: 'r', enabled: true, spotId: 's', fishingType: 'fondo',
-  maxWindKn: 10, maxWaveM: 1, tide: 'any', fromHour: 0, toHour: 24,
+  maxWindKmh: 18, maxWaveM: 1, tide: 'any', fromHour: 0, toHour: 24,
 };
 
 describe('tides', () => {
@@ -38,7 +35,7 @@ describe('tides', () => {
 
 describe('alertWindows', () => {
   it('groups consecutive matching hours and skips the past', () => {
-    const pts = [pt(6), pt(7), pt(8, { windKn: 25 }), pt(9), pt(10)];
+    const pts = [pt(6), pt(7), pt(8, { windKmh: 45 }), pt(9), pt(10)];
     expect(alertWindows(pts, rule, '2026-10-09T07:00')).toEqual([
       { start: '2026-10-09T07:00', end: '2026-10-09T07:00' },
       { start: '2026-10-09T09:00', end: '2026-10-09T10:00' },
@@ -50,7 +47,7 @@ describe('alertWindows', () => {
     expect(w).toEqual([{ start: '2026-10-09T05:00', end: '2026-10-09T06:00' }]);
   });
   it('rejects missing data and low pressure', () => {
-    const pts = [pt(6, { windKn: null }), pt(7, { pressureHpa: 1000 })];
+    const pts = [pt(6, { windKmh: null }), pt(7, { pressureHpa: 1000 })];
     expect(alertWindows(pts, { ...rule, minPressureHpa: 1010 }, '2026-10-09T00:00')).toEqual([]);
   });
 });
@@ -58,11 +55,13 @@ describe('alertWindows', () => {
 describe('mergeConditions', () => {
   it('joins by timestamp', () => {
     const out = mergeConditions(
-      { hourly: { time: ['a', 'b'], wave_height: [1, null], sea_surface_temperature: [18, 18], sea_level_height_msl: [0.1, 0.2] } },
-      { hourly: { time: ['b'], wind_speed_10m: [7], wind_direction_10m: [180], pressure_msl: [1012] } },
+      { hourly: { time: ['a', 'b'], wave_height: [1, null], ocean_current_velocity: [3.6, 7.2], sea_surface_temperature: [18, 18], sea_level_height_msl: [0.1, 0.2] } },
+      { hourly: { time: ['b'], wind_speed_10m: [13], wind_direction_10m: [180], pressure_msl: [1012] } },
     );
-    expect(out[0].windKn).toBeNull();
-    expect(out[1]).toMatchObject({ waveM: null, windKn: 7, pressureHpa: 1012 });
+    expect(out[0].windKmh).toBeNull();
+    expect(out[0].wavePeriodS).toBeNull();
+    expect(out[0].currentMs).toBeCloseTo(1);
+    expect(out[1]).toMatchObject({ waveM: null, windKmh: 13, pressureHpa: 1012 });
   });
 });
 

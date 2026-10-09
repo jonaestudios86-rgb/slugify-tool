@@ -23,7 +23,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
       }}>
       <Tabs.Screen name="index" options={{ title: 'Mapa' }} />
-      <Tabs.Screen name="conditions" options={{ title: 'Condiciones' }} />
+      <Tabs.Screen name="conditions" options={{ title: 'Predicción' }} />
       <Tabs.Screen name="catches" options={{ title: 'Capturas' }} />
       <Tabs.Screen name="alerts" options={{ title: 'Alertas' }} />
     </Tabs>
