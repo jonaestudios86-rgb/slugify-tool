@@ -7,15 +7,15 @@ import { LEVEL_COLOR, scoreLevel } from '../../lib/score';
 import { colors, ui } from '../theme';
 import { f1 } from './format';
 
-const COL = 54;
-const LABEL_W = 84;
+const COL = 56;
+const LABEL_W = 92;
 const NOW_BG = 'rgba(46,196,182,0.28)';
 const SEL_BG = 'rgba(244,185,66,0.30)';
 const BEST_BG = 'rgba(34,197,94,0.14)';
 
 type Row = { k: string; label: string; unit?: string; h: number; section?: boolean };
 const ROWS: Row[] = [
-  { k: 'score', label: 'Punt.', h: 50 },
+  { k: 'score', label: 'Punt.', h: 58 },
   { k: 's1', label: 'Mar', h: 30, section: true },
   { k: 'wave', label: 'Olas', unit: 'm', h: 50 },
   { k: 'series', label: 'Series hasta', unit: 'm', h: 46 },
@@ -59,15 +59,15 @@ export function HourTable({ day, nowKey, selectedHour, onPickHour }: { day: DayF
   const valid = pts.filter((p): p is { x: number; y: number; v: number } => p !== null);
 
   const bg = (hour: number, time: string) =>
-    hour === selectedHour ? SEL_BG : time === nowKey ? NOW_BG : day.bestStretch && hour >= day.bestStretch.start && hour < day.bestStretch.end ? BEST_BG : undefined;
+    hour === selectedHour || time === nowKey ? undefined : day.bestStretch && hour >= day.bestStretch.start && hour < day.bestStretch.end ? BEST_BG : undefined;
 
   const cell = (r: Row, h: DayForecast['hours'][number]) => {
     const p = h.point;
-    const t = (s: string, dim = false) => <Text style={[ui.text, dim && { color: colors.muted }]}>{s}</Text>;
+    const t = (s: string, dim = false) => <Text style={[ui.text, { fontSize: 17 }, dim && { color: colors.muted }]}>{s}</Text>;
     switch (r.k) {
       case 'score': {
         const c = LEVEL_COLOR[scoreLevel(h.score)];
-        return <View style={{ backgroundColor: c, borderRadius: 8, width: COL - 8, paddingVertical: 6, alignItems: 'center' }}><Text style={{ color: '#06121b', fontWeight: '800', fontSize: 15 }}>{h.score}</Text></View>;
+        return <View style={{ backgroundColor: c, borderRadius: 8, width: COL - 8, paddingVertical: 8, alignItems: 'center' }}><Text style={{ color: '#06121b', fontWeight: '800', fontSize: 19 }}>{h.score}</Text></View>;
       }
       case 'wave': return t(f1(h.waveM));
       case 'series': return t(f1(h.seriesM), true);
@@ -89,14 +89,14 @@ export function HourTable({ day, nowKey, selectedHour, onPickHour }: { day: DayF
 
   return (
     <View style={[ui.card, { padding: 0, overflow: 'hidden', minWidth: 0 }]}>
-      <Text style={[ui.muted, { fontSize: 15, padding: 14, paddingBottom: 6 }]}>Detalles por Hora</Text>
+      <Text style={[ui.muted, { fontSize: 20, padding: 16, paddingBottom: 8 }]}>Detalles por Hora</Text>
       <View style={{ flexDirection: 'row' }}>
         <View style={{ width: LABEL_W }}>
           <View style={{ height: 38 }} />
           {ROWS.map((r) => (
             <View key={r.k} style={{ height: r.h, justifyContent: 'center', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border }}>
-              <Text style={r.section ? { color: colors.muted, fontSize: 13 } : { color: colors.text, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>{r.label}</Text>
-              {r.unit && !r.section && <Text style={{ color: colors.muted, fontSize: 11 }}>{r.unit}</Text>}
+              <Text style={r.section ? { color: colors.muted, fontSize: 16 } : { color: colors.text, fontSize: 16, fontWeight: '600', textAlign: 'center' }}>{r.label}</Text>
+              {r.unit && !r.section && <Text style={{ color: colors.muted, fontSize: 14 }}>{r.unit}</Text>}
             </View>
           ))}
         </View>
@@ -107,10 +107,14 @@ export function HourTable({ day, nowKey, selectedHour, onPickHour }: { day: DayF
           showsHorizontalScrollIndicator={false}
           onLayout={() => scroller.current?.scrollTo({ x: Math.max(0, (nowIdx >= 0 ? nowIdx - 1 : 6) * COL), animated: false })}>
           <View style={{ width: day.hours.length * COL }}>
+            {day.hours.map((h, i) => {
+              const color = h.hour === selectedHour ? SEL_BG : h.point.time === nowKey ? NOW_BG : null;
+              return color ? <View key={`col${h.point.time}`} pointerEvents="none" style={{ position: 'absolute', left: i * COL, top: 0, bottom: 0, width: COL, borderRadius: 14, backgroundColor: color }} /> : null;
+            })}
             <View style={{ flexDirection: 'row', height: 38, alignItems: 'center' }}>
               {day.hours.map((h) => (
                 <Pressable key={h.point.time} onPress={() => onPickHour?.(h.hour)} style={{ width: COL, alignItems: 'center', height: 38, justifyContent: 'center', backgroundColor: bg(h.hour, h.point.time) }}>
-                  <Text style={{ color: h.point.time === nowKey ? colors.accent : colors.text, fontWeight: '700', fontSize: 13 }}>{String(h.hour).padStart(2, '0')}h</Text>
+                  <Text style={{ color: h.point.time === nowKey ? colors.accent : colors.text, fontWeight: '700', fontSize: 16 }}>{String(h.hour).padStart(2, '0')}h</Text>
                 </Pressable>
               ))}
             </View>

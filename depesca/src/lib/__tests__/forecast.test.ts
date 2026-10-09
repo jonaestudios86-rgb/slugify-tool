@@ -215,3 +215,28 @@ describe('fetchConditions fallbacks', () => {
     await expect(fetchConditions(36.7, -4.4, 1, async () => bad)).rejects.toThrow(/Open-Meteo 400/);
   });
 });
+
+describe('area scores', () => {
+  it('shares one forecast per ~20 km cell and scores each place', async () => {
+    const { scorePlaces, pickCells, clearAreaCache } = await import('../areaScore');
+    clearAreaCache();
+    const hours = Array.from({ length: 24 }, (_, h) => ({
+      time: `2026-10-09T${String(h).padStart(2, '0')}:00`,
+      waveM: 0.3, wavePeriodS: 5, waveDirDeg: 180, swellM: 0.2, currentMs: 0.1, currentDirDeg: 90,
+      seaTempC: 20, seaLevelM: Math.sin(h / 2) * 0.3, windKmh: 8, windDirDeg: 0, gustKmh: 12, airTempC: 20,
+      pressureHpa: 1015, cloudPct: 10, rainMm: 0, rainProbPct: 0,
+    }));
+    let calls = 0;
+    const load = async () => { calls++; return { points: hours, utcOffsetSec: 7200, timezone: 'Europe/Madrid' }; };
+    const places = [
+      { id: 'a', lat: 36.70, lon: -4.40 }, { id: 'b', lat: 36.71, lon: -4.41 }, { id: 'c', lat: 40.4, lon: -3.7 },
+    ];
+    const center = { lat: 36.7, lon: -4.4 };
+    expect(pickCells(places, center).size).toBe(2);
+    const s = await scorePlaces(places, center, load, new Date('2026-10-09T10:00:00Z'));
+    expect(calls).toBe(2);
+    expect(Object.keys(s).sort()).toEqual(['a', 'b', 'c']);
+    expect(s.a).toBeGreaterThan(0);
+    expect(s.a).toBeLessThanOrEqual(100);
+  });
+});
