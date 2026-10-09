@@ -1,6 +1,6 @@
-# RadarFish (uso personal)
+# DePesca (uso personal)
 
-App móvil de pesca inspirada en RadarFish. Expo + React Native + TypeScript. Sin cuentas ni claves de API: los datos se guardan en el móvil.
+App móvil de pesca inspirada en la app RadarFish. Expo + React Native + TypeScript. Sin cuentas ni claves de API: los datos se guardan en el móvil.
 
 ## Funciones
 - **Mapa** (OpenStreetMap + OpenSeaMap): spots con fondo, especies, técnicas y notas; favoritos; tu ubicación. Pulsación larga en el mapa para guardar un spot.
