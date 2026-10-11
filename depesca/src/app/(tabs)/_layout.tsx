@@ -24,6 +24,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
       }}>
       <Tabs.Screen name="index" options={{ title: 'Mapa', tabBarIcon: () => <Text style={{ fontSize: 18 }}>🗺</Text> }} />
+      <Tabs.Screen name="favorites" options={{ title: 'Favoritos', tabBarIcon: () => <Text style={{ fontSize: 18 }}>⭐</Text> }} />
       <Tabs.Screen name="conditions" options={{ title: 'Predicción', tabBarIcon: () => <Text style={{ fontSize: 18 }}>🌊</Text> }} />
       <Tabs.Screen name="catches" options={{ title: 'Capturas', tabBarIcon: () => <Text style={{ fontSize: 18 }}>🐟</Text> }} />
       <Tabs.Screen name="alerts" options={{ title: 'Alertas', tabBarIcon: () => <Text style={{ fontSize: 18 }}>🔔</Text> }} />
