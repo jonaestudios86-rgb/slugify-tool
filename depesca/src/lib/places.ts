@@ -103,3 +103,38 @@ export function coastOrientation(lat: number, lon: number, ways: [number, number
   }
   return best ? (Math.round(best.deg / 45) * 45) % 360 : undefined;
 }
+
+const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** "Costa del Sol · Almayate": the name plus its town, so beaches with the same name can be told apart. */
+export function spotLabel(s: { name: string; place?: string }): string {
+  return s.place && !fold(s.name).includes(fold(s.place)) ? `${s.name} · ${s.place}` : s.name;
+}
+
+/**
+ * Display label of every spot, made unique: spots that still share a label (same name in the same town)
+ * get "(oeste)/(este)" or "(norte)/(sur)" when there are two, or "(1)", "(2)"… when there are more.
+ */
+export function spotLabels(spots: { id: string; name: string; place?: string; lat: number; lon: number }[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  const groups = new Map<string, typeof spots>();
+  for (const s of spots) {
+    const l = spotLabel(s);
+    groups.set(l, [...(groups.get(l) ?? []), s]);
+  }
+  for (const [label, group] of groups) {
+    if (group.length === 1) {
+      out[group[0].id] = label;
+      continue;
+    }
+    const lonSpread = Math.max(...group.map((g) => g.lon)) - Math.min(...group.map((g) => g.lon));
+    const latSpread = Math.max(...group.map((g) => g.lat)) - Math.min(...group.map((g) => g.lat));
+    const byLon = lonSpread * Math.cos((group[0].lat * Math.PI) / 180) >= latSpread;
+    const sorted = [...group].sort((a, b) => (byLon ? a.lon - b.lon : b.lat - a.lat));
+    sorted.forEach((s, i) => {
+      const tag = sorted.length === 2 ? (byLon ? ['oeste', 'este'] : ['norte', 'sur'])[i] : String(i + 1);
+      out[s.id] = `${label} (${tag})`;
+    });
+  }
+  return out;
+}

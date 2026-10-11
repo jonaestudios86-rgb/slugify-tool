@@ -84,8 +84,27 @@ for n,((s,w),ids) in enumerate(sorted(tilesWith.items())):
     for i in ids: 
         o=orient(out[i],idx)
         if o is not None: out[i][5]=o
+# ---- 4. nearest town (weighted so towns win over tiny hamlets)
+WEIGHT={'city':2.5,'town':2.0,'village':1.5,'suburb':1.2,'hamlet':1.0}  # ciudades y pueblos pesan más que caseríos
+pl=[]; seen_pl=set()
+for f in glob.glob('places/p_*.json'):
+    for la,lo,nm,ty in json.load(open(f,encoding='utf-8')):
+        k=(nm,round(la,3),round(lo,3))
+        if k not in seen_pl: seen_pl.add(k); pl.append((la,lo,nm,ty))
+pidx=defaultdict(list)
+for q in pl: pidx[(math.floor(q[0]/0.1),math.floor(q[1]/0.1))].append(q)
+def town(p):
+    """Nearest recognisable place: a city/town/village/suburb within 3 km, else any place (hamlets included) within 8 km."""
+    cy,cx=math.floor(p[0]/0.1),math.floor(p[1]/0.1)
+    cands=[(d_m(p,q),q) for dy in (-1,0,1) for dx in (-1,0,1) for q in pidx.get((cy+dy,cx+dx),())]
+    for limit,allowed in ((3000,('city','town','village','suburb')),(8000,tuple(WEIGHT))):
+        ok=[(d/WEIGHT[q[3]],q[2]) for d,q in cands if d<limit and q[3] in allowed]
+        if ok: return min(ok)[1]
+    return None
+for p in out: p.append(town(p))
+print('with place',sum(1 for p in out if p[6]), 'of', len(out))
 known=sum(1 for p in out if p[5]>=0)
 print('with orientation',known,'of',len(out))
-b=[[round(p[0],4),round(p[1],4),p[2] or None,p[3],p[5],p[4] or None] for p in sorted(out,key=lambda p:(p[0],p[1]))]
+b=[[round(p[0],4),round(p[1],4),p[2] or None,p[3],p[5],p[4] or None,p[6]] for p in sorted(out,key=lambda p:(p[0],p[1]))]
 json.dump({'v':1,'cov':[27.5,-18.5,44.5,4.5],'b':b},open('beaches-es.json','w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
 print('size',os.path.getsize('beaches-es.json'))

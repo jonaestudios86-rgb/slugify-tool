@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { SpotMap, type MapHandle } from '../../components/SpotMap';
@@ -10,7 +10,7 @@ import { previewStore, selectionStore, spotsStore } from '../../lib/stores';
 import { confirmAction, notice } from '../../lib/dialog';
 import { ORIENTATIONS } from '../../lib/geo';
 import { scorePlaces } from '../../lib/areaScore';
-import { coastOrientation, placeDefaults } from '../../lib/places';
+import { coastOrientation, placeDefaults, spotLabels } from '../../lib/places';
 import { uid } from '../../lib/storage';
 import type { Seabed, Spot } from '../../lib/types';
 
@@ -24,6 +24,7 @@ export default function MapScreen() {
   const [selectedId, setSelected] = selectionStore.useValue();
   const [draft, setDraft] = useState<Draft | null>(null);
   const handle = useRef<MapHandle | null>(null);
+  const labels = useMemo(() => spotLabels(spots), [spots]);
   const selected = spots.find((s) => s.id === selectedId) ?? null;
 
   const startNew = (lat: number, lon: number, name = '', notes = '') =>
@@ -36,7 +37,7 @@ export default function MapScreen() {
       const d = placeDefaults(info.kind, info.surface);
       const spot: Spot = {
         id: `osm-${lat.toFixed(4)}_${lon.toFixed(4)}`, name, lat, lon, seabed: d.seabed, species: csv(d.species), techniques: csv(d.techniques),
-        notes: d.notes, favorite: false, orientation: info.orientation ?? coastOrientation(lat, lon, info.coast ?? []),
+        notes: d.notes, favorite: false, place: info.place, orientation: info.orientation ?? coastOrientation(lat, lon, info.coast ?? []),
       };
       previewStore.set(spot);
       setSelected(spot.id);
@@ -91,7 +92,7 @@ export default function MapScreen() {
       {selected && (
         <View style={[ui.card, { margin: 10, marginBottom: 0 }]}>
           <View style={ui.row}>
-            <Text style={[ui.h2, { flex: 1 }]}>{selected.favorite ? '★ ' : ''}{selected.name}</Text>
+            <Text style={[ui.h2, { flex: 1 }]}>{selected.favorite ? '★ ' : ''}{labels[selected.id] ?? selected.name}</Text>
             <Pressable onPress={() => handle.current?.flyTo(selected.lat, selected.lon)}><Text style={{ color: colors.accent }}>Centrar</Text></Pressable>
           </View>
           <Text style={ui.muted}>Fondo: {selected.seabed}{selected.orientation != null ? ` · Costa al ${ORIENTATIONS.find((o) => o.deg === selected.orientation)?.label ?? ''}` : ''} · {selected.lat.toFixed(4)}, {selected.lon.toFixed(4)}</Text>
@@ -109,7 +110,7 @@ export default function MapScreen() {
 
       <ScrollView horizontal style={{ flexGrow: 0, padding: 10 }} showsHorizontalScrollIndicator={false}>
         {[...spots].sort((a, b) => Number(b.favorite) - Number(a.favorite)).map((s) => (
-          <Chip key={s.id} label={(s.favorite ? '★ ' : '') + s.name} on={s.id === selectedId} onPress={() => { setSelected(s.id); handle.current?.flyTo(s.lat, s.lon); }} />
+          <Chip key={s.id} label={(s.favorite ? '★ ' : '') + (labels[s.id] ?? s.name)} on={s.id === selectedId} onPress={() => { setSelected(s.id); handle.current?.flyTo(s.lat, s.lon); }} />
         ))}
       </ScrollView>
 

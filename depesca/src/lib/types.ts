@@ -10,6 +10,8 @@ export interface Spot {
   techniques: string[];
   notes: string;
   favorite: boolean;
+  /** Town or area the spot is in (e.g. "Almayate"), to tell apart beaches that share a name. */
+  place?: string;
   /** Compass bearing (deg) the coast faces, towards the open sea. Used to estimate nearshore waves. */
   orientation?: number;
 }

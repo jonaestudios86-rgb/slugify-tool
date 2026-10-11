@@ -10,6 +10,8 @@ export interface MapHandle {
 export interface PlaceInfo {
   kind: 'beach' | 'pier' | 'breakwater';
   surface?: string;
+  /** Nearest town, when known. */
+  place?: string;
   /** Precomputed direction the coast faces (deg), when known. */
   orientation?: number;
   /** Coastline segments [[lat,lon],[lat,lon]] near the place, to work out which way the coast faces. */
@@ -40,7 +42,7 @@ var layer=L.layerGroup().addTo(map),me=null,fitted=false;
 function post(o){var t=JSON.stringify(o);if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(t);else window.parent.postMessage({depescaMap:t},'*')}
 window.setSpots=function(spots,sel){layer.clearLayers();spots.forEach(function(s){
  var m=L.circleMarker([s.lat,s.lon],{radius:s.id===sel?11:8,color:s.favorite?'#f4b942':'#2ec4b6',fillColor:s.favorite?'#f4b942':'#2ec4b6',fillOpacity:.7,weight:s.id===sel?4:2}).addTo(layer);
- m.bindTooltip(s.name);m.on('click',function(){post({type:'select',id:s.id})});});
+ m.bindTooltip(lab(s.name,s.place||''));m.on('click',function(){post({type:'select',id:s.id})});});
  if(!fitted&&spots.length){fitted=true;map.fitBounds(L.latLngBounds(spots.map(function(s){return [s.lat,s.lon]})).pad(.3),{maxZoom:12})}};
 window.setMe=function(lat,lon,center){if(me)map.removeLayer(me);me=L.circleMarker([lat,lon],{radius:6,color:'#fff',fillColor:'#3a86ff',fillOpacity:1}).addTo(map);if(center)map.setView([lat,lon],12)};
 window.flyTo=function(lat,lon){map.setView([lat,lon],13)};
@@ -72,15 +74,17 @@ function loadDB(cb){
  dbState=1;
  fetch('/beaches-es.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){DB=j.b;COV=j.cov;dbState=2;cb(true)}).catch(function(){dbState=3;cb(false)});
 }
-function addCand(k,la,lo,kd,name,surface,orient){
- if(seen[k])return;seen[k]=1;var beach=kd==='beach',label=KL[KN.indexOf(kd)]+(name?': '+name:'');
+function fold(s){return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()}
+function lab(n,pl){return pl&&!fold(n).includes(fold(pl))?n+' · '+pl:n}
+function addCand(k,la,lo,kd,name,surface,orient,place){
+ if(seen[k])return;seen[k]=1;var beach=kd==='beach',label=KL[KN.indexOf(kd)]+': '+lab(name||'',place||'');if(!name&&!place)label=KL[KN.indexOf(kd)];
  var m=L.marker([la,lo],{icon:dot(scores[k]!=null?scores[k]:null,beach)}).addTo(cand);
  m.bindTooltip(label+(scores[k]!=null?' · pesca '+scores[k]+'/100':''));
  cmap[k]={m:m,beach:beach,label:label,lat:la,lon:lo,o:orient};
- m.on('click',function(){pick(la,lo,name||KL[KN.indexOf(kd)],kd,surface,orient)});
+ m.on('click',function(){pick(la,lo,name||KL[KN.indexOf(kd)],kd,surface,orient,place)});
 }
-function pick(la,lo,nm,kd,surface,orient){
- if(orient!=null){post({type:'place',lat:la,lon:lo,name:nm,kind:kd,surface:surface,orientation:orient>=0?orient:undefined,coast:[]});return}
+function pick(la,lo,nm,kd,surface,orient,place){
+ if(orient!=null){post({type:'place',lat:la,lon:lo,name:nm,kind:kd,surface:surface,place:place||undefined,orientation:orient>=0?orient:undefined,coast:[]});return}
  status('analizando '+nm+'…');
  var q='[out:json][timeout:15];way(around:1200,'+la+','+lo+')["natural"="coastline"];out geom('+(la-0.015)+','+(lo-0.02)+','+(la+0.015)+','+(lo+0.02)+');';
  var done=false,go=function(coast){if(done)return;done=true;status();post({type:'place',lat:la,lon:lo,name:nm,kind:kd,surface:surface,coast:coast})};
@@ -98,7 +102,7 @@ function fromDB(){
  var d=function(i){return Math.hypot(DB[i][0]-c.lat,(DB[i][1]-c.lng)*.8)};
  list.sort(function(x,y){return d(x)-d(y)});
  if(Object.keys(cmap).length>900){cand.clearLayers();cmap={};seen={}}
- list.slice(0,300).forEach(function(i){var r=DB[i];addCand('d'+i,r[0],r[1],KN[r[3]],r[2],r[5],r[4])});
+ list.slice(0,300).forEach(function(i){var r=DB[i];addCand('d'+i,r[0],r[1],KN[r[3]],r[2],r[5],r[4],r[6])});
  failed=false;announce();status(list.length+' en la zona');
 }
 function loadLive(){

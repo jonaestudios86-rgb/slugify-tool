@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { colors, ui } from '../../components/theme';
 import { scorePlaces } from '../../lib/areaScore';
 import { compass } from '../../lib/geo';
+import { spotLabels } from '../../lib/places';
 import { LEVEL_COLOR, scoreLevel } from '../../lib/score';
 import { selectionStore, spotsStore } from '../../lib/stores';
 
@@ -11,6 +12,7 @@ export default function Favorites() {
   const [spots, setSpots] = spotsStore.useValue();
   const [, setSelected] = selectionStore.useValue();
   const favorites = useMemo(() => spots.filter((s) => s.favorite).sort((a, b) => a.name.localeCompare(b.name, 'es')), [spots]);
+  const labels = useMemo(() => spotLabels(spots), [spots]);
   const [scores, setScores] = useState<Record<string, number>>({});
 
   // Today's fishing score for each favourite, from one forecast per ~20 km area.
@@ -46,7 +48,7 @@ export default function Favorites() {
                 <Text style={{ color: score == null ? colors.muted : '#06121b', fontWeight: '800', fontSize: 18 }}>{score ?? '–'}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>★ {s.name}</Text>
+                <Text numberOfLines={1} style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>★ {labels[s.id] ?? s.name}</Text>
                 <Text numberOfLines={1} style={ui.muted}>
                   Fondo: {s.seabed}{s.orientation != null ? ` · Costa al ${compass(s.orientation)}` : ''}
                 </Text>

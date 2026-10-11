@@ -6,6 +6,7 @@ import { Btn, Chip } from '../../components/Btn';
 import { colors, ui } from '../../components/theme';
 import { confirmAction, notice } from '../../lib/dialog';
 import { persistablePhoto } from '../../lib/image';
+import { spotLabels } from '../../lib/places';
 import { uid } from '../../lib/storage';
 import { catchStats } from '../../lib/stats';
 import { catchesStore, spotsStore } from '../../lib/stores';
@@ -28,7 +29,8 @@ export default function Catches() {
     }
   }, [params.spot]);
   const stats = useMemo(() => catchStats(catches), [catches]);
-  const spotName = (id?: string) => spots.find((s) => s.id === id)?.name;
+  const labels = useMemo(() => spotLabels(spots), [spots]);
+  const spotName = (id?: string) => (id ? labels[id] : undefined);
 
   const pick = async (camera: boolean) => {
     const opts: ImagePicker.ImagePickerOptions = { mediaTypes: 'images', quality: 0.6 };
@@ -86,7 +88,7 @@ export default function Catches() {
               <TextInput style={ui.input} placeholder="Longitud (cm, opcional)" keyboardType="decimal-pad" placeholderTextColor={colors.muted} value={draft.length} onChangeText={(length) => setDraft({ ...draft, length })} />
               <Text style={ui.muted}>Spot</Text>
               <ScrollView horizontal style={{ marginVertical: 8 }}>
-                {spots.map((s) => <Chip key={s.id} label={s.name} on={draft.spotId === s.id} onPress={() => setDraft({ ...draft, spotId: draft.spotId === s.id ? undefined : s.id })} />)}
+                {spots.map((s) => <Chip key={s.id} label={labels[s.id] ?? s.name} on={draft.spotId === s.id} onPress={() => setDraft({ ...draft, spotId: draft.spotId === s.id ? undefined : s.id })} />)}
               </ScrollView>
               <TextInput style={[ui.input, { height: 80 }]} multiline placeholder="Notas (cebo, hora, marea…)" placeholderTextColor={colors.muted} value={draft.notes} onChangeText={(notes) => setDraft({ ...draft, notes })} />
               {draft.photoUri && <Image source={{ uri: draft.photoUri }} style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 8 }} />}

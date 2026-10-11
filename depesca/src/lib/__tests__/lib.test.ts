@@ -99,3 +99,38 @@ describe('imported places', () => {
     expect(coastOrientation(36.5, -4.5, [])).toBeUndefined();
   });
 });
+
+describe('beach labels', () => {
+  it('adds the town to tell same-named beaches apart', async () => {
+    const { spotLabel } = await import('../places');
+    expect(spotLabel({ name: 'Costa del Sol', place: 'Almayate' })).toBe('Costa del Sol · Almayate');
+    expect(spotLabel({ name: 'Costa del Sol', place: 'Torrox Costa' })).toBe('Costa del Sol · Torrox Costa');
+    expect(spotLabel({ name: 'Playa de Almayate', place: 'Almayate' })).toBe('Playa de Almayate');
+    expect(spotLabel({ name: 'Playa de Málaga', place: 'Malaga' })).toBe('Playa de Málaga');
+    expect(spotLabel({ name: 'Playa' })).toBe('Playa');
+  });
+  it('reads the town of a saved spot from the database', async () => {
+    const { nearestPlace } = await import('../beachDb');
+    const rows: any = [
+      [36.7480, -4.0700, 'Costa del Sol', 0, 180, null, 'Almayate'],
+      [36.7500, -3.9700, 'Costa del Sol', 0, 180, null, 'Torrox Costa'],
+    ];
+    expect(nearestPlace(rows, 36.7481, -4.0701)).toBe('Almayate');
+    expect(nearestPlace(rows, 36.7501, -3.9701)).toBe('Torrox Costa');
+    expect(nearestPlace(rows, 36.60, -4.50)).toBeUndefined();
+  });
+});
+
+describe('unique spot labels', () => {
+  it('tells apart same-named spots in the same town', async () => {
+    const { spotLabels } = await import('../places');
+    const a = { id: 'a', name: 'Costa del Sol', place: 'Almayate', lat: 36.7236, lon: -4.1282 };
+    const b = { id: 'b', name: 'Costa del Sol', place: 'Almayate', lat: 36.7245, lon: -4.1181 };
+    const c = { id: 'c', name: 'Costa del Sol', place: 'Torrox Costa', lat: 36.73, lon: -3.96 };
+    const l = spotLabels([a, b, c]);
+    expect(l.a).toBe('Costa del Sol · Almayate (oeste)');
+    expect(l.b).toBe('Costa del Sol · Almayate (este)');
+    expect(l.c).toBe('Costa del Sol · Torrox Costa');
+    expect(spotLabels([a]).a).toBe('Costa del Sol · Almayate');
+  });
+});

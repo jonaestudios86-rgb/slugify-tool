@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { Btn, Chip } from '../../components/Btn';
 import { colors, ui } from '../../components/theme';
 import { refreshAlerts, type AlertHit } from '../../lib/notify';
 import { notice } from '../../lib/dialog';
+import { spotLabels } from '../../lib/places';
 import { uid } from '../../lib/storage';
 import { alertsStore, spotsStore } from '../../lib/stores';
 import type { AlertRule, TidePhase } from '../../lib/types';
@@ -57,7 +58,8 @@ export default function Alerts() {
     void check(next);
   };
 
-  const spotName = (id: string) => spots.find((s) => s.id === id)?.name ?? '(spot borrado)';
+  const labels = useMemo(() => spotLabels(spots), [spots]);
+  const spotName = (id: string) => labels[id] ?? '(spot borrado)';
 
   return (
     <View style={ui.screen}>
@@ -100,7 +102,7 @@ export default function Alerts() {
               <TextInput style={ui.input} placeholder="Nombre (p. ej. Lubina al amanecer)" placeholderTextColor={colors.muted} value={draft.name} onChangeText={(name) => setDraft({ ...draft, name })} />
               <Text style={ui.muted}>Spot</Text>
               <ScrollView horizontal style={{ marginVertical: 8 }}>
-                {spots.map((s) => <Chip key={s.id} label={s.name} on={draft.spotId === s.id} onPress={() => setDraft({ ...draft, spotId: s.id })} />)}
+                {spots.map((s) => <Chip key={s.id} label={labels[s.id] ?? s.name} on={draft.spotId === s.id} onPress={() => setDraft({ ...draft, spotId: s.id })} />)}
               </ScrollView>
               {!spots.length && <Text style={{ color: colors.warn }}>Primero guarda un spot en el mapa.</Text>}
               <TextInput style={ui.input} placeholder="Tipo de pesca (spinning, fondo…)" placeholderTextColor={colors.muted} value={draft.fishingType} onChangeText={(fishingType) => setDraft({ ...draft, fishingType })} />
