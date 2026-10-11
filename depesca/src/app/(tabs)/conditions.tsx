@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Chip } from '../../components/Btn';
+import { RenameModal } from '../../components/RenameModal';
 import { HourTable } from '../../components/forecast/HourTable';
 import {
   DayPicker, Header, HistoryCard, Metrics, PlanCard, ScoreBlock, ShopsSection, SolunarCard, SpeciesCard, TideCard, WhyScore, ZoneInfo,
@@ -43,6 +44,7 @@ export default function Forecast() {
   const [stale, setStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [dayIdx, setDayIdx] = useState(0);
   const [pickedHour, setPickedHour] = useState<number | null>(null);
   const [shops, setShops] = useState<{ id: string; list: Shop[] | null; loading: boolean; error: boolean } | null>(null);
@@ -96,6 +98,13 @@ export default function Forecast() {
     );
   }
 
+  const rename = (name: string) => {
+    const change = { name, place: undefined, customName: true };
+    if (isPreview) setPreview({ ...spot, ...change });
+    else setSpots((p) => p.map((s) => (s.id === spot.id ? { ...s, ...change } : s)));
+    setRenaming(false);
+  };
+
   const openMaps = (lat: number, lon: number, name: string) =>
     Linking.openURL(mapsUrl(lat, lon, name)).catch(() => {});
 
@@ -126,6 +135,7 @@ export default function Forecast() {
         <Header
           spot={spot}
           label={labels[spot.id] ?? spotLabel(spot)}
+          onRename={() => setRenaming(true)}
           tz={forecast?.timezone ?? '…'}
           onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)}
           onAlert={() => router.navigate('/alerts')}
@@ -164,6 +174,7 @@ export default function Forecast() {
           </>
         )}
       </ScrollView>
+      <RenameModal visible={renaming} initial={spot.name} onSave={rename} onCancel={() => setRenaming(false)} />
     </View>
   );
 }

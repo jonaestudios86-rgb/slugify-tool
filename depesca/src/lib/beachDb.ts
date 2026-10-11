@@ -28,7 +28,7 @@ export function nearestPlace(rows: Row[], lat: number, lon: number, maxM = 400):
 
 /** Saved spots from before towns existed get theirs from the database. Returns the spots that changed. */
 export async function fillPlaces(spots: Spot[]): Promise<Spot[]> {
-  const missing = spots.filter((s) => !s.place);
+  const missing = spots.filter((s) => !s.place && !s.customName);
   if (!missing.length) return [];
   const rows = await load();
   if (!rows) return [];

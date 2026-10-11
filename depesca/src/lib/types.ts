@@ -12,6 +12,8 @@ export interface Spot {
   favorite: boolean;
   /** Town or area the spot is in (e.g. "Almayate"), to tell apart beaches that share a name. */
   place?: string;
+  /** The user typed this name: keep it exactly, never add the town. */
+  customName?: boolean;
   /** Compass bearing (deg) the coast faces, towards the open sea. Used to estimate nearshore waves. */
   orientation?: number;
 }

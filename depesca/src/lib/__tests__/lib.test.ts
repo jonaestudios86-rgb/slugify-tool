@@ -134,3 +134,17 @@ describe('unique spot labels', () => {
     expect(spotLabels([a]).a).toBe('Costa del Sol · Almayate');
   });
 });
+
+describe('custom names', () => {
+  it('keeps a name the user typed exactly, without the town', async () => {
+    const { spotLabel, spotLabels } = await import('../places');
+    expect(spotLabel({ name: 'Mi cala', place: 'Almayate', customName: true })).toBe('Mi cala');
+    expect(spotLabel({ name: 'Mi cala', place: 'Almayate' })).toBe('Mi cala · Almayate');
+    expect(spotLabels([{ id: 'a', name: 'Mi cala', customName: true, lat: 36.7, lon: -4.1 }]).a).toBe('Mi cala');
+  });
+  it('does not fill the town of renamed spots from the database', async () => {
+    const { fillPlaces } = await import('../beachDb');
+    const spot = { id: 'a', name: 'Mi cala', lat: 36.7, lon: -4.1, seabed: 'arena' as const, species: [], techniques: [], notes: '', favorite: true, customName: true };
+    expect(await fillPlaces([spot])).toEqual([]);
+  });
+});

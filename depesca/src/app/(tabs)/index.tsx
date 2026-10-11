@@ -48,7 +48,10 @@ export default function MapScreen() {
 
   const save = () => {
     if (!draft || !draft.name.trim()) return notice('Falta el nombre del spot');
-    const spot: Spot = { ...draft, name: draft.name.trim(), species: csv(draft.species), techniques: csv(draft.techniques) };
+    const old = spots.find((s) => s.id === draft.id);
+    const name = draft.name.trim();
+    const renamed = !!old && old.name !== name;
+    const spot: Spot = { ...draft, name, species: csv(draft.species), techniques: csv(draft.techniques), ...(renamed ? { customName: true, place: undefined } : {}) };
     setSpots((prev) => (prev.some((s) => s.id === spot.id) ? prev.map((s) => (s.id === spot.id ? spot : s)) : [...prev, spot]));
     setSelected(spot.id);
     setDraft(null);

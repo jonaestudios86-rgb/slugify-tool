@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { RenameModal } from '../../components/RenameModal';
 import { colors, ui } from '../../components/theme';
 import { scorePlaces } from '../../lib/areaScore';
 import { compass } from '../../lib/geo';
@@ -13,6 +14,8 @@ export default function Favorites() {
   const [, setSelected] = selectionStore.useValue();
   const favorites = useMemo(() => spots.filter((s) => s.favorite).sort((a, b) => a.name.localeCompare(b.name, 'es')), [spots]);
   const labels = useMemo(() => spotLabels(spots), [spots]);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const renamingSpot = spots.find((s) => s.id === renaming);
   const [scores, setScores] = useState<Record<string, number>>({});
 
   // Today's fishing score for each favourite, from one forecast per ~20 km area.
@@ -28,6 +31,10 @@ export default function Favorites() {
   const open = (id: string) => {
     setSelected(id);
     router.navigate('/conditions');
+  };
+  const rename = (name: string) => {
+    setSpots((p) => p.map((s) => (s.id === renaming ? { ...s, name, place: undefined, customName: true } : s)));
+    setRenaming(null);
   };
   const unfavorite = (id: string) => setSpots((p) => p.map((s) => (s.id === id ? { ...s, favorite: false } : s)));
 
@@ -54,6 +61,9 @@ export default function Favorites() {
                 </Text>
                 {!!s.species.length && <Text numberOfLines={1} style={ui.muted}>{s.species.join(', ')}</Text>}
               </View>
+              <Pressable onPress={() => setRenaming(s.id)} accessibilityLabel="Cambiar nombre" hitSlop={10}>
+                <Text style={{ color: colors.muted, fontSize: 22 }}>✎</Text>
+              </Pressable>
               <Pressable onPress={() => unfavorite(s.id)} accessibilityLabel="Quitar de favoritos" hitSlop={10}>
                 <Text style={{ color: colors.danger, fontSize: 24 }}>♥</Text>
               </Pressable>
@@ -61,6 +71,7 @@ export default function Favorites() {
           );
         })}
       </ScrollView>
+      <RenameModal visible={!!renamingSpot} initial={renamingSpot?.name ?? ''} onSave={rename} onCancel={() => setRenaming(null)} />
     </View>
   );
 }

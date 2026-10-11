@@ -14,8 +14,8 @@ import { Btn, Chip } from '../Btn';
 import { colors, ui } from '../theme';
 import { ago, dm, f1, moonEmoji, pad, stars, weekday } from './format';
 
-export function Header({ spot, label, tz, onNavigate, onAlert, onFavorite, onShare, onClose }: {
-  spot: Spot; label?: string; tz: string; onNavigate: () => void; onAlert: () => void; onFavorite: () => void; onShare: () => void; onClose: () => void;
+export function Header({ spot, label, onRename, tz, onNavigate, onAlert, onFavorite, onShare, onClose }: {
+  spot: Spot; label?: string; onRename?: () => void; tz: string; onNavigate: () => void; onAlert: () => void; onFavorite: () => void; onShare: () => void; onClose: () => void;
 }) {
   const Icon = ({ glyph, onPress, label, color }: { glyph: string; onPress: () => void; label: string; color?: string }) => (
     <Pressable onPress={onPress} accessibilityLabel={label} hitSlop={8} style={{ paddingHorizontal: 7 }}>
@@ -25,7 +25,9 @@ export function Header({ spot, label, tz, onNavigate, onAlert, onFavorite, onSha
   return (
     <View style={[ui.row, { justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 }]}>
       <View style={{ flex: 1, paddingRight: 6 }}>
-        <Text numberOfLines={1} style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{label ?? spotLabel(spot)}</Text>
+        <Pressable onPress={onRename} accessibilityLabel="Cambiar nombre" hitSlop={6}>
+          <Text numberOfLines={1} style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{label ?? spotLabel(spot)}{onRename ? <Text style={{ color: colors.muted, fontSize: 18 }}>  ✎</Text> : null}</Text>
+        </Pressable>
         <Text style={ui.muted}>🕒 {tz === 'Europe/Madrid' ? 'Hora de España' : tz === 'Atlantic/Canary' ? 'Hora de Canarias' : `Hora local · ${tz}`}</Text>
       </View>
       <View style={ui.row}>
