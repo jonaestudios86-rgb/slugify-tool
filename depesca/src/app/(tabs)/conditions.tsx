@@ -11,7 +11,7 @@ import { colors, ui } from '../../components/theme';
 import { fetchConditions, type Conditions } from '../../lib/conditions';
 import { mapsUrl, shareText } from '../../lib/dialog';
 import { buildForecast } from '../../lib/forecast';
-import { fetchShops, type Shop } from '../../lib/places';
+import { fetchShops, spotLabel, spotLabels, type Shop } from '../../lib/places';
 import { LEVEL_LABEL } from '../../lib/score';
 import { catchesStore, previewStore, selectionStore, spotsStore } from '../../lib/stores';
 
@@ -27,6 +27,7 @@ export default function Forecast() {
   const [catches] = catchesStore.useValue();
   const [selectedId, setSelected] = selectionStore.useValue();
   const [preview, setPreview] = previewStore.useValue();
+  const labels = useMemo(() => spotLabels([...spots, ...(preview && !spots.some((s) => s.id === preview.id) ? [preview] : [])]), [spots, preview]);
   const isPreview = !!preview && preview.id === selectedId && !spots.some((s) => s.id === selectedId);
   const spot = spots.find((s) => s.id === selectedId) ?? (isPreview ? preview : null) ?? spots[0] ?? null;
   /** Saves a beach opened from the map into "mis spots". */
@@ -118,12 +119,13 @@ export default function Forecast() {
     <View style={ui.screen}>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.accent} />} contentContainerStyle={{ paddingBottom: 40 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 12, paddingBottom: 0 }}>
-          {isPreview && preview && <Chip key={preview.id} label={preview.name} on onPress={() => setSelected(preview.id)} />}
-          {spots.map((s) => <Chip key={s.id} label={s.name} on={s.id === spot.id} onPress={() => setSelected(s.id)} />)}
+          {isPreview && preview && <Chip key={preview.id} label={labels[preview.id] ?? spotLabel(preview)} on onPress={() => setSelected(preview.id)} />}
+          {spots.map((s) => <Chip key={s.id} label={labels[s.id] ?? spotLabel(s)} on={s.id === spot.id} onPress={() => setSelected(s.id)} />)}
         </ScrollView>
 
         <Header
           spot={spot}
+          label={labels[spot.id] ?? spotLabel(spot)}
           tz={forecast?.timezone ?? '…'}
           onNavigate={() => openMaps(spot.lat, spot.lon, spot.name)}
           onAlert={() => router.navigate('/alerts')}

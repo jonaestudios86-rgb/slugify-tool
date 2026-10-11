@@ -38,7 +38,7 @@ function toSpot(v: unknown): Spot | null {
     id: v.id, name: v.name, lat: v.lat, lon: v.lon,
     seabed: SEABEDS.includes(v.seabed as Seabed) ? (v.seabed as Seabed) : 'mixto',
     species: strs(v.species), techniques: strs(v.techniques), notes: str(v.notes) ? v.notes : '',
-    favorite: v.favorite === true, orientation: num(v.orientation) ? v.orientation : undefined,
+    favorite: v.favorite === true, place: str(v.place) && v.place ? v.place : undefined, orientation: num(v.orientation) ? v.orientation : undefined,
   };
 }
 

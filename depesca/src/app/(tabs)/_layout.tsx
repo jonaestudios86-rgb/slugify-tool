@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useEffect } from 'react';
 import { Text } from 'react-native';
 import { colors } from '../../components/theme';
+import { fillPlaces } from '../../lib/beachDb';
 import { refreshAlerts } from '../../lib/notify';
 import { alertsStore, catchesStore, selectionStore, spotsStore } from '../../lib/stores';
 
@@ -10,6 +11,9 @@ export default function TabsLayout() {
   useEffect(() => {
     (async () => {
       await Promise.all([spotsStore.load(), alertsStore.load(), catchesStore.load(), selectionStore.load()]);
+      // Spots saved before towns existed: add theirs so beaches with the same name can be told apart.
+      const updated = await fillPlaces(spotsStore.get());
+      if (updated.length) spotsStore.set((prev) => prev.map((s) => updated.find((u) => u.id === s.id)?.place ? { ...s, place: updated.find((u) => u.id === s.id)!.place } : s));
       if (alertsStore.get().some((r) => r.enabled)) await refreshAlerts(alertsStore.get(), spotsStore.get());
     })().catch(() => {});
   }, []);
