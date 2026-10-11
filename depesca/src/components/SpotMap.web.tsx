@@ -39,7 +39,7 @@ export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, onPlaces,
       } else if (m.type === 'select') latest.current.onSelect(m.id);
       else if (m.type === 'add') latest.current.onAdd(m.lat, m.lon);
       else if (m.type === 'places') latest.current.onPlaces?.(m.items, m.center);
-      else if (m.type === 'place') latest.current.onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, coast: m.coast });
+      else if (m.type === 'place') latest.current.onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, orientation: m.orientation, coast: m.coast });
     };
     window.addEventListener('message', onMessage);
     return () => {

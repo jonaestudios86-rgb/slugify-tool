@@ -36,7 +36,7 @@ export function SpotMap({ spots, selectedId, onSelect, onAdd, onPlace, onPlaces,
     } else if (m.type === 'select') onSelect(m.id);
     else if (m.type === 'add') onAdd(m.lat, m.lon);
     else if (m.type === 'places') onPlaces?.(m.items, m.center);
-    else if (m.type === 'place') onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, coast: m.coast });
+    else if (m.type === 'place') onPlace?.(m.lat, m.lon, m.name, { kind: m.kind, surface: m.surface, orientation: m.orientation, coast: m.coast });
   };
 
   return <WebView ref={web} originWhitelist={['*']} source={{ html: MAP_HTML, baseUrl: 'https://localhost' }} onMessage={onMessage} javaScriptEnabled style={{ flex: 1 }} />;

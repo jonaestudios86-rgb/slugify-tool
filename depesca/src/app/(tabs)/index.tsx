@@ -36,7 +36,7 @@ export default function MapScreen() {
       const d = placeDefaults(info.kind, info.surface);
       const spot: Spot = {
         id: `osm-${lat.toFixed(4)}_${lon.toFixed(4)}`, name, lat, lon, seabed: d.seabed, species: csv(d.species), techniques: csv(d.techniques),
-        notes: d.notes, favorite: false, orientation: coastOrientation(lat, lon, info.coast ?? []),
+        notes: d.notes, favorite: false, orientation: info.orientation ?? coastOrientation(lat, lon, info.coast ?? []),
       };
       previewStore.set(spot);
       setSelected(spot.id);
